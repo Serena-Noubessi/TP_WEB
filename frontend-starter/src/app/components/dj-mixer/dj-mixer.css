@@ -1,0 +1,174 @@
+:host { display: block; }
+
+:host .mixer {
+  display: grid;
+  gap: 0.9rem;
+  height: 100%;
+  padding: 0.9rem;
+  border: 1px solid #2a303c;
+  border-radius: 14px;
+  background: var(--dj-panel-bg, linear-gradient(180deg, #20242d, #15181e));
+  backdrop-filter: var(--dj-panel-blur, none);
+}
+
+:host .channels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+:host .channel {
+  display: grid;
+  justify-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.3rem;
+  border-radius: 10px;
+  background: #12151b;
+}
+
+:host .channel .channel-name {
+  color: var(--deck-color);
+  font-weight: 800;
+}
+
+:host .fader-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.45rem;
+  height: 8rem;
+}
+
+:host .meter {
+  position: relative;
+  width: 0.45rem;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #0a0b0e;
+}
+
+:host .meter span {
+  position: absolute;
+  inset: auto 0 0;
+  height: var(--level, 0%);
+  background: linear-gradient(0deg, #2ee66b 0%, #ffd60a 70%, #ff3b5c 100%);
+  background-size: 100% 8rem;
+  background-position: bottom;
+}
+
+:host .meter.horizontal {
+  width: 100%;
+  height: 0.45rem;
+}
+
+:host .meter.horizontal span {
+  inset: 0 auto 0 0;
+  width: var(--level, 0%);
+  height: auto;
+  background: linear-gradient(90deg, #2ee66b 0%, #ffd60a 70%, #ff3b5c 100%);
+}
+
+:host label.fader,
+:host label.crossfader {
+  display: block;
+  margin: 0;
+}
+
+:host .fader input[type='range'] {
+  width: 1.6rem;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--deck-color);
+  writing-mode: vertical-lr;
+  direction: rtl;
+}
+
+:host .master {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+}
+
+:host .crossfader .crossfader-labels {
+  display: flex;
+  justify-content: space-between;
+  color: #9aa3b5;
+}
+
+:host .crossfader .crossfader-labels small {
+  color: #9aa3b5;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+:host .crossfader input[type='range'] {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: #e4e8f0;
+}
+
+:host .record {
+  display: grid;
+  gap: 0.4rem;
+}
+
+:host .record button.record-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  border: 1px solid #353c4a;
+  border-radius: 8px;
+  color: #e4e8f0;
+  background: #232833;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+:host .record button.record-button:hover:not(:disabled) { background: #2c3240; }
+
+:host .record button.record-button.is-on {
+  border-color: #ff3b5c;
+  background: #3a1820;
+}
+
+:host .record .record-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: #ff3b5c;
+}
+
+:host .record button.record-button.is-on .record-dot { animation: blink 1s steps(2) infinite; }
+
+:host .record a.download {
+  color: #2ee6c5;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+:host .mixer .mixer-message {
+  margin: 0;
+  color: #ffd60a;
+  font-size: 0.82rem;
+}
+
+:host .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@keyframes blink {
+  50% { opacity: 0.2; }
+}

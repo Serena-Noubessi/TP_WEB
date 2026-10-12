@@ -1,0 +1,41 @@
+# Butterchurn + ISF integration test plan
+# This is a planning manifest, not executable shader code.
+
+[test]
+name = "ISF BadTV post-process"
+status = "source URL verified; not integrated into the application"
+
+# Open this demo to verify Butterchurn itself and its presets:
+butterchurn_demo_url = "https://butterchurnviz.com/"
+
+# Pinned ISF fragment shader source for a reproducible test.
+# It declares inputImage plus controls for noise, distortion and scan lines.
+isf_shader_url = "https://raw.githubusercontent.com/msfeldstein/interactive-shader-format-js/1ef6a7062e875fd4b90f850844caf6ead330bd99/examples/badtv.fs"
+isf_shader_source_page = "https://github.com/msfeldstein/interactive-shader-format-js/blob/1ef6a7062e875fd4b90f850844caf6ead330bd99/examples/badtv.fs"
+isf_shader_license = "MIT; preserve the shader's embedded attribution and license when redistributing"
+
+[proposed_pipeline]
+step_1 = "Load the authenticated audio response as the current Blob/ObjectURL playback flow does."
+step_2 = "Connect the playing HTMLAudioElement to Web Audio and pass its audio node to Butterchurn."
+step_3 = "Render Butterchurn into an offscreen WebGL canvas."
+step_4 = "Pass that canvas as the ISF inputImage, update ISF controls, and render the processed frame to the visible canvas."
+step_5 = "For multiple effects, pass each stage's output texture/frame to the next stage; prefer one WebGL context with framebuffer ping-pong to avoid context and GPU-memory growth."
+
+[script_design]
+recommendation = "Use declarative JSON automation scripts for ordered preset/effect changes and parameter keyframes."
+avoid = "Do not evaluate arbitrary user-provided JavaScript in the application context."
+future_validation = "Validate script schema, effect identifiers, parameter names, numeric ranges and duration before playback."
+
+[test_cases]
+1 = "Loading the pinned shader parses its ISF metadata and declares inputImage."
+2 = "A malformed shader or failed fetch reports an actionable error and leaves the current visualizer running."
+3 = "The shader chain applies effects in the configured order and supplies each stage with the previous stage's output."
+4 = "ISF parameter values are clamped or rejected when outside the metadata min/max range."
+5 = "A JSON automation script changes only declared effects and parameters at the expected timestamps."
+6 = "Stopping playback or leaving the visualizer releases animation frames, audio nodes, object URLs and WebGL resources."
+7 = "With no audio playing, the visualizer remains stable and handles resize and WebGL context loss gracefully."
+
+[limitations]
+shader_source_url = "The raw URL serves shader source; it is not a hosted interactive preview."
+cors = "The browser must be allowed to fetch the shader URL. For normal use, import and validate local .fs files or fetch from an explicitly supported origin."
+integration = "No application dependencies or runtime code have been changed yet."

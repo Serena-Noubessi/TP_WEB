@@ -1,0 +1,86 @@
+<section class="mixer" aria-label="Mixeur">
+  <div class="channels">
+    @for (channel of channels; track channel.id) {
+      @let deck = engine.deck(channel.id);
+      <div class="channel" [style.--deck-color]="channel.color">
+        <span class="channel-name">{{ channel.id }}</span>
+        @for (item of bands; track item.band) {
+          <app-dj-knob
+            [label]="item.label"
+            [value]="deck.eq()[item.band]"
+            [color]="channel.color"
+            [valueText]="eqText(deck.eq()[item.band])"
+            (valueChange)="deck.setEq(item.band, $event)"
+          />
+        }
+        <app-dj-knob
+          label="Filtre"
+          [value]="deck.filter()"
+          color="#ffd60a"
+          [valueText]="filterText(deck.filter())"
+          (valueChange)="deck.setFilter($event)"
+        />
+        <div class="fader-row">
+          <div #meter class="meter" [attr.data-source]="channel.id" aria-hidden="true"><span></span></div>
+          <label class="fader">
+            <span class="sr-only">Volume de la voie {{ channel.id }}</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              [value]="deck.volume()"
+              (input)="changeVolume(channel.id, $event)"
+              [attr.aria-valuetext]="(deck.volume() * 100).toFixed(0) + ' %'"
+            />
+          </label>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="master">
+    <app-dj-knob
+      label="Master"
+      [value]="engine.masterVolume()"
+      [min]="0"
+      [max]="1"
+      [defaultValue]="0.9"
+      color="#ffffff"
+      [valueText]="(engine.masterVolume() * 100).toFixed(0) + ' %'"
+      (valueChange)="engine.setMasterVolume($event)"
+    />
+    <div #meter class="meter horizontal" data-source="master" aria-hidden="true"><span></span></div>
+  </div>
+
+  <label class="crossfader">
+    <span class="crossfader-labels" aria-hidden="true"><b>A</b><small>Crossfader</small><b>B</b></span>
+    <input
+      type="range"
+      min="-1"
+      max="1"
+      step="0.01"
+      [value]="engine.crossfader()"
+      (input)="changeCrossfader($event)"
+      (dblclick)="engine.setCrossfader(0)"
+      aria-label="Crossfader entre la platine A et la platine B"
+    />
+  </label>
+
+  <div class="record">
+    <button type="button" class="record-button" [class.is-on]="engine.recording()" (click)="engine.toggleRecording()">
+      <span class="record-dot" aria-hidden="true"></span>
+      {{ engine.recording() ? 'Arrêter l’enregistrement' : 'Enregistrer le mix' }}
+    </button>
+    @if (engine.recordingUrl(); as url) {
+      <a class="download" [href]="url" download="mon-mix.webm">Télécharger le mix</a>
+    }
+  </div>
+
+  @if (engine.syncMessage()) {
+    <p class="mixer-message" role="status">{{ engine.syncMessage() }}</p>
+  }
+  @if (engine.audioError()) {
+    <p class="mixer-message" role="alert">{{ engine.audioError() }}</p>
+  }
+</section>

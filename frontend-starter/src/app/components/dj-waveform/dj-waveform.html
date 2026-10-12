@@ -1,0 +1,13 @@
+<div class="waveforms">
+  <canvas #zoom class="zoom" aria-hidden="true"></canvas>
+  <canvas
+    #overview
+    class="overview"
+    role="img"
+    [attr.aria-label]="'Vue d’ensemble du morceau de la platine ' + deck().id + ', cliquer pour se déplacer'"
+    (click)="seekFromOverview($event)"
+  ></canvas>
+  @if (deck().analyzing()) {
+    <p class="analysis-status" role="status">Analyse du tempo…</p>
+  }
+</div>

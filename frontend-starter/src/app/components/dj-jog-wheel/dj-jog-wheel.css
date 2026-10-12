@@ -1,0 +1,61 @@
+:host { display: block; }
+
+:host .jog {
+  width: min(11rem, 100%);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  padding: 0.45rem;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #2c313c, #12151b);
+  box-shadow: 0 0 0 2px #343a47, 0 10px 24px #000a;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+:host .jog.is-scratching {
+  box-shadow: 0 0 0 2px var(--deck-color), 0 0 22px color-mix(in srgb, var(--deck-color) 45%, transparent);
+  cursor: grabbing;
+}
+
+:host .jog.is-disabled { opacity: 0.5; cursor: not-allowed; }
+
+:host .jog:focus-visible {
+  outline: 2px solid var(--deck-color);
+  outline-offset: 4px;
+}
+
+:host .platter {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(circle, #0c0d10 0 2px, #191b21 2px 4px),
+    #111;
+}
+
+:host .marker {
+  position: absolute;
+  top: 6%;
+  left: 50%;
+  width: 0.3rem;
+  height: 18%;
+  border-radius: 3px;
+  background: var(--deck-color);
+  transform: translateX(-50%);
+}
+
+:host .platter .label {
+  display: grid;
+  width: 34%;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  color: #0d0f13;
+  background: var(--deck-color);
+  font-size: 1.3rem;
+  font-weight: 800;
+}

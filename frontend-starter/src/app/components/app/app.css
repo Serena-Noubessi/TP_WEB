@@ -1,0 +1,141 @@
+:host { display: block; }
+
+.app-shell {
+	min-height: 100vh;
+	background: #f3f7f5;
+	color: #17312a;
+}
+
+.site-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 2rem;
+	padding: 0.85rem 5vw;
+	border-bottom: 1px solid #245548;
+	background: #123d32;
+}
+
+.brand {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.7rem;
+	color: white;
+	text-decoration: none;
+}
+
+.brand-mark {
+	display: grid;
+	width: 2.35rem;
+	height: 2.35rem;
+	place-items: center;
+	border: 1px solid #79b6a1;
+	border-radius: 50%;
+	color: #bde4d5;
+	font-size: 1.3rem;
+}
+
+.brand span:last-child {
+	display: grid;
+	gap: 0.15rem;
+}
+
+.brand small { color: #b7d1c8; }
+
+.toolbar {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.3rem;
+	border: 1px solid #376c5d;
+	border-radius: 10px;
+	background: #174b3e;
+}
+
+.toolbar a {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	padding: 0.55rem 0.75rem;
+	border-radius: 7px;
+	color: #d9eee7;
+	text-decoration: none;
+	transition: background-color 160ms ease, color 160ms ease;
+}
+
+.toolbar-action {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	padding: 0.55rem 0.75rem;
+	border: 0;
+	border-radius: 7px;
+	color: #d9eee7;
+	background: transparent;
+	font: inherit;
+}
+
+.toolbar a:hover,
+.toolbar a:focus-visible,
+.toolbar a.is-active,
+.toolbar-action:hover,
+.toolbar-action:focus-visible {
+	color: #123d32;
+	background: #bde4d5;
+}
+
+.theme-toggle {
+	padding: 0.35rem 0.55rem;
+	white-space: nowrap;
+}
+
+.theme-switch {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+}
+
+.theme-sun,
+.theme-moon {
+	font-size: 1rem;
+	line-height: 1;
+}
+
+.theme-track {
+	display: inline-flex;
+	align-items: center;
+	width: 2.15rem;
+	height: 1.1rem;
+	padding: 0.15rem;
+	border-radius: 999px;
+	background: #79b6a1;
+}
+
+.theme-thumb {
+	display: block;
+	width: 0.8rem;
+	height: 0.8rem;
+	border-radius: 50%;
+	background: white;
+	transform: translateX(0);
+	transition: transform 160ms ease;
+}
+
+.dark-mode .theme-thumb { transform: translateX(1.05rem); }
+
+.toolbar-icon {
+	min-width: 1.1rem;
+	text-align: center;
+	font-size: 1.1rem;
+}
+
+@media (max-width: 720px) {
+	.site-header {
+		align-items: stretch;
+		flex-direction: column;
+		gap: 0.8rem;
+	}
+
+	.toolbar { justify-content: stretch; }
+	.toolbar a { flex: 1; justify-content: center; }
+}

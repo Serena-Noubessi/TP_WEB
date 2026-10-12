@@ -1,0 +1,69 @@
+<section class="library" aria-labelledby="library-title">
+  <div class="library-header">
+    <h2 id="library-title">Bibliothèque</h2>
+    <label class="library-search">
+      <span class="sr-only">Rechercher un morceau</span>
+      <input type="search" [value]="search()" (input)="filter($event)" placeholder="Rechercher un morceau…" />
+    </label>
+    <button type="button" class="ghost" (click)="load()">Actualiser</button>
+  </div>
+
+  <div class="crate-bar" role="toolbar" aria-label="Bacs par catégorie">
+    <button type="button" class="crate-pill" [class.is-active]="categoryFilter() === ''" [attr.aria-pressed]="categoryFilter() === ''" (click)="selectCategory('')" style="--cat: #e4e8f0">
+      🎶 Tous
+    </button>
+    @for (category of categories; track category.id) {
+      <button type="button" class="crate-pill" [class.is-active]="categoryFilter() === category.id" [attr.aria-pressed]="categoryFilter() === category.id" (click)="selectCategory(category.id)" [style.--cat]="category.color">
+        {{ category.icon }} {{ category.label }}
+        <span class="pill-count">{{ categoryCount(category) ?? '…' }}</span>
+      </button>
+    }
+  </div>
+
+  @if (error()) {
+    <p class="library-message" role="alert">{{ error() }}</p>
+  }
+  @if (loading()) {
+    <p class="library-message" role="status">Chargement…</p>
+  }
+
+  <ul class="library-list">
+    @for (track of displayed(); track track.id) {
+      @let category = categoryOf(track);
+      <li draggable="true" (dragstart)="dragStart($event, track)" title="Glisser sur une platine" [style.--cat]="category.color">
+        <span class="cat-icon" [title]="category.label" aria-hidden="true">{{ category.icon }}</span>
+        <span class="track-name">
+          <strong>{{ displayTitle(track) }}</strong>
+          @if (track.online; as online) {
+            <small>
+              <span class="badge-online">En ligne</span>
+              {{ online.artist }} · {{ online.sourceLabel }} ·
+              @if (online.licenseUrl) {
+                <a [href]="online.licenseUrl" target="_blank" rel="noopener noreferrer">{{ online.license }}</a>
+              } @else {
+                {{ online.license }}
+              }
+            </small>
+          } @else {
+            <small>{{ track.originalName }}</small>
+          }
+        </span>
+        <span class="track-bpm">{{ knownBpm(track) }}</span>
+        <button type="button" class="load load-a" [class.is-loaded]="isOnDeck('A', track)" (click)="loadOn('A', track)" [attr.aria-label]="'Charger ' + displayTitle(track) + ' sur la platine A'">Charger A</button>
+        <button type="button" class="load load-b" [class.is-loaded]="isOnDeck('B', track)" (click)="loadOn('B', track)" [attr.aria-label]="'Charger ' + displayTitle(track) + ' sur la platine B'">Charger B</button>
+      </li>
+    } @empty {
+      @if (!loading() && !error()) {
+        <li class="empty">
+          {{ search().trim() || categoryFilter() ? 'Aucun morceau dans ce bac.' : 'Aucun morceau : importez-en depuis l’onglet Backing tracks.' }}
+        </li>
+      }
+    }
+  </ul>
+
+  <div class="library-pager">
+    <button type="button" class="ghost" (click)="go(page() - 1)" [disabled]="page() === 1">Préc.</button>
+    <span>Page {{ page() }} / {{ pages() }}</span>
+    <button type="button" class="ghost" (click)="go(page() + 1)" [disabled]="page() >= pages()">Suiv.</button>
+  </div>
+</section>

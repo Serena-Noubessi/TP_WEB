@@ -1,0 +1,193 @@
+<section>
+  <div class="hero">
+    <p class="eyebrow">MA BIBLIOTHÈQUE</p>
+    <h1>Backing tracks</h1>
+    <p>Importez, retrouvez et écoutez vos morceaux de travail.</p>
+  </div>
+
+  <div class="grid">
+    <div class="side-column">
+    <article class="card upload-card">
+      <h2>Importer</h2>
+      <label>Titre<input [formControl]="title" [disabled]="uploading()" /></label>
+      <label>Catégorie
+        <select [formControl]="uploadCategory">
+          <option value="">📁 Non classé</option>
+          @for (category of categories; track category.id) {
+            <option [value]="category.id">{{ category.icon }} {{ category.label }}</option>
+          }
+        </select>
+      </label>
+      <label>Fichier audio<input type="file" accept="audio/*" (change)="choose($event)" [disabled]="uploading()" /></label>
+      <label>Image de couverture (facultative)
+        <input type="file" accept="image/jpeg,image/png,image/webp" (change)="chooseCover($event)" [disabled]="uploading()" />
+      </label>
+      @if (!uploading() && !uploadError() && !uploadSuccess()) {
+        <p role="status">Aucun envoi en cours.</p>
+      }
+      @if (uploadError()) {
+        <p role="alert">{{ uploadError() }}</p>
+      }
+      @if (uploadSuccess()) {
+        <p role="status">{{ uploadSuccess() }}</p>
+      }
+      @if (uploading()) {
+        @if (uploadProgress() !== null) {
+          <label class="upload-progress">
+            <span>Envoi du fichier : {{ uploadProgress() }} %</span>
+            <progress [value]="uploadProgress() ?? 0" max="100"> {{ uploadProgress() }} % </progress>
+          </label>
+        } @else {
+          <p role="status">Envoi du fichier en cours…</p>
+          <progress class="upload-progress-indeterminate" aria-label="Envoi du fichier en cours"></progress>
+        }
+      }
+      <button type="button" (click)="upload()" [disabled]="!file || uploading()">
+        {{ uploading() ? 'Envoi…' : 'Envoyer' }}
+      </button>
+    </article>
+    <app-bulk-import (imported)="onImported()" />
+    <app-online-track-add (added)="onlineAdded()" />
+    </div>
+
+    <article class="card">
+      <div class="row">
+        <h2>Mes pistes</h2>
+        <button type="button" (click)="load()">Actualiser</button>
+      </div>
+      <nav class="crates" aria-label="Catégories">
+        <button type="button" class="crate" [class.is-active]="categoryFilter() === ''" [attr.aria-pressed]="categoryFilter() === ''" (click)="selectCategory('')" style="--crate-color: #1d755e">
+          <span class="crate-icon" aria-hidden="true">🎶</span>
+          <span class="crate-label">Tous</span>
+          <span class="crate-count">{{ totalCount() ?? '…' }}</span>
+        </button>
+        @for (category of categories; track category.id) {
+          <button type="button" class="crate" [class.is-active]="categoryFilter() === category.id" [attr.aria-pressed]="categoryFilter() === category.id" (click)="selectCategory(category.id)" [style.--crate-color]="category.color">
+            <span class="crate-icon" aria-hidden="true">{{ category.icon }}</span>
+            <span class="crate-label">{{ category.label }}</span>
+            <span class="crate-count">{{ categoryCount(category) ?? '…' }}</span>
+          </button>
+        }
+      </nav>
+      <label class="title-filter">
+        Filtrer par titre
+        <input type="search" [value]="titleFilter()" (input)="filterByTitle($event)" placeholder="Rechercher un morceau…" />
+      </label>
+      @if (deleteSuccess()) {
+        <p role="status">{{ deleteSuccess() }}</p>
+      }
+      @if (error()) {
+        <p role="alert">{{ error() }}</p>
+      }
+      @if (loading()) {
+        <p>Chargement…</p>
+      }
+      <ul class="track-list" aria-label="Liste de mes pistes audio">
+        @for (track of displayedTracks(); track track.id) {
+          <li>
+            @let category = categoryOf(track);
+            <article class="track-card" [style.--category-color]="category.color">
+              <div class="track-cover-frame">
+                @if (track.online?.imageUrl; as onlineCover) {
+                  <img class="track-cover" [src]="onlineCover" [alt]="'Pochette de ' + displayTitle(track)" />
+                } @else if (coverUrls()[track.id]; as coverUrl) {
+                  <img class="track-cover" [src]="coverUrl" [alt]="'Couverture de ' + displayTitle(track)" />
+                } @else if (track.coverUrl) {
+                  <div class="cover-placeholder" role="status">Chargement…</div>
+                } @else {
+                  <div class="cover-placeholder" aria-label="Aucune image de couverture">{{ category.icon }}</div>
+                }
+              </div>
+              <div class="track-content">
+                <div class="track-heading">
+                  <h3>{{ displayTitle(track) }}</h3>
+                  <span class="track-badges">
+                    <span class="category-badge">{{ category.icon }} {{ category.label }}</span>
+                    @if (track.online) {
+                      <span class="track-format">En ligne</span>
+                    }
+                  </span>
+                </div>
+                @if (track.online; as online) {
+                <dl class="track-details">
+                  <div>
+                    <dt>Artiste</dt>
+                    <dd>{{ online.artist }}</dd>
+                  </div>
+                  <div>
+                    <dt>Source</dt>
+                    <dd>
+                      @if (online.pageUrl) {
+                        <a [href]="online.pageUrl" target="_blank" rel="noopener noreferrer">{{ online.sourceLabel }}</a>
+                      } @else {
+                        {{ online.sourceLabel }}
+                      }
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Licence</dt>
+                    <dd>
+                      @if (online.licenseUrl) {
+                        <a [href]="online.licenseUrl" target="_blank" rel="noopener noreferrer">{{ online.license }}</a>
+                      } @else {
+                        {{ online.license }}
+                      }
+                    </dd>
+                  </div>
+                </dl>
+                } @else {
+                <dl class="track-details">
+                  <div>
+                    <dt>Nom original</dt>
+                    <dd>{{ track.originalName }}</dd>
+                  </div>
+                  <div>
+                    <dt>Taille</dt>
+                    <dd>{{ formatFileSize(track.size) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Date d’ajout</dt>
+                    <dd><time [attr.datetime]="track.createdAt">{{ track.createdAt | date:"dd/MM/yyyy 'à' HH:mm" }}</time></dd>
+                  </div>
+                </dl>
+                }
+                @if (deleteErrorTrackId() === track.id) {
+                  <p class="track-message" role="alert">{{ deleteError() }}</p>
+                }
+                @if (audioErrorTrackId() === track.id) {
+                  <p class="track-message" role="alert">{{ audioError() }}</p>
+                }
+                @if (coverErrors()[track.id]) {
+                  <p class="track-message" role="alert">{{ coverErrors()[track.id] }}</p>
+                }
+                <div class="track-footer">
+                  <div class="track-actions">
+                    <button type="button" (click)="play(track)" [attr.aria-label]="'Lire ' + displayTitle(track)" [disabled]="audioLoadingTrackId() === track.id">
+                      <span aria-hidden="true">▶</span>
+                      <span>{{ audioLoadingTrackId() === track.id ? 'Chargement…' : 'Lire' }}</span>
+                    </button>
+                    <button type="button" class="delete-button" (click)="deleteTrack(track)" [disabled]="deletingTrackId() === track.id" [attr.aria-label]="'Supprimer ' + displayTitle(track)">
+                      {{ deletingTrackId() === track.id ? 'Suppression…' : track.online ? 'Retirer' : 'Supprimer' }}
+                    </button>
+                  </div>
+                  @if (playingTrackId() === track.id) {
+                    <audio [src]="audioUrl()" controls autoplay [attr.aria-label]="'Lecture de ' + displayTitle(track)"></audio>
+                  }
+                </div>
+              </div>
+            </article>
+          </li>
+        } @empty {
+          @if (!error()) {
+            <li class="empty-tracks">{{ titleFilter().trim() || categoryFilter() ? 'Aucune piste ne correspond à ce filtre.' : 'Aucune piste.' }}</li>
+          }
+        }
+      </ul>
+      <div class="pager">
+        <button type="button" (click)="go(page() - 1)" [disabled]="page() === 1">Préc.</button>
+        <span>Page {{ page() }} / {{ pages() }}</span>
+        <button type="button" (click)="go(page() + 1)" [disabled]="page() === pages()">Suiv.</button>
+      </div>
+    </article>
+  </div>
+</section>

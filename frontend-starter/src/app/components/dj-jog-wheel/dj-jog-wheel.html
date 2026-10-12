@@ -1,0 +1,20 @@
+<div
+  class="jog"
+  [class.is-scratching]="deck().scratching()"
+  [class.is-disabled]="!deck().loaded()"
+  [style.--deck-color]="color()"
+  role="button"
+  tabindex="0"
+  [attr.aria-label]="'Platine ' + deck().id + ' : faire tourner pour scratcher, flèches gauche et droite pour reculer ou avancer d’un temps'"
+  [attr.aria-pressed]="deck().scratching()"
+  (pointerdown)="grab($event)"
+  (pointermove)="move($event)"
+  (pointerup)="release($event)"
+  (pointercancel)="release($event)"
+  (keydown)="keydown($event)"
+>
+  <div #platter class="platter">
+    <span class="marker"></span>
+    <div class="label">{{ deck().id }}</div>
+  </div>
+</div>

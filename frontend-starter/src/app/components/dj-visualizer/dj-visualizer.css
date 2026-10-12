@@ -1,0 +1,93 @@
+:host { display: block; }
+
+/*
+ * Canvas en fond d'écran : position fixe sur toute la fenêtre (ou tout l'écran
+ * en plein écran), z-index négatif pour rester derrière l'interface, et
+ * pointer-events désactivé pour ne jamais intercepter un clic.
+ */
+:host canvas.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  background: #000;
+  pointer-events: none;
+  transition: opacity 400ms ease;
+}
+
+:host canvas.backdrop.is-on { opacity: 1; }
+
+:host .visualizer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #2a303c;
+  border-radius: 14px;
+  background: var(--dj-panel-bg, #15181e);
+  backdrop-filter: var(--dj-panel-blur, none);
+}
+
+:host .visualizer h2 {
+  margin: 0 auto 0 0;
+  color: #f3f5f9;
+  font-size: 1.05rem;
+}
+
+:host .visualizer button.vz-button {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #353c4a;
+  border-radius: 7px;
+  color: #e4e8f0;
+  background: #232833;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+:host .visualizer button.vz-button:hover:not(:disabled) { background: #2c3240; }
+
+:host .visualizer button.vz-button.is-on {
+  border-color: #b388ff;
+  color: #0d0f13;
+  background: #b388ff;
+}
+
+:host .visualizer button.vz-button:focus-visible {
+  outline: 2px solid #b388ff;
+  outline-offset: 2px;
+}
+
+:host label.vz-preset {
+  display: block;
+  max-width: 100%;
+  margin: 0;
+}
+
+:host .vz-preset select {
+  max-width: min(22rem, 100%);
+  padding: 0.35rem;
+  border: 1px solid #353c4a;
+  border-radius: 7px;
+  color: #e4e8f0;
+  background: #0f1116;
+  font-size: 0.8rem;
+}
+
+:host .visualizer .vz-message {
+  flex-basis: 100%;
+  margin: 0;
+  color: #ffd60a;
+}
+
+:host .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

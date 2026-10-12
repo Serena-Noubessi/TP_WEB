@@ -1,0 +1,55 @@
+<div class="app-shell" [class.dark-mode]="darkMode()">
+  <header class="site-header">
+    <a class="brand" routerLink="/tracks" aria-label="Accueil Guitar Practice Cloud">
+      <span class="brand-mark" aria-hidden="true">♫</span>
+      <span>
+        <b>Guitar Practice Cloud</b>
+        <small>Le cloud qui manque à votre ampli</small>
+      </span>
+    </a>
+
+    <nav class="toolbar" aria-label="Navigation principale">
+      <a routerLink="/tracks" routerLinkActive="is-active" ariaCurrentWhenActive="page">
+        <span class="toolbar-icon" aria-hidden="true">♫</span>
+        <span>Backing tracks</span>
+      </a>
+      <a routerLink="/mix" routerLinkActive="is-active" ariaCurrentWhenActive="page">
+        <span class="toolbar-icon" aria-hidden="true">🎧</span>
+        <span>Mixage</span>
+      </a>
+      <a routerLink="/profile" routerLinkActive="is-active" ariaCurrentWhenActive="page">
+        <span class="toolbar-icon" aria-hidden="true">👤</span>
+        <span>Profil</span>
+      </a>
+      @if (auth.token()) {
+        <button type="button" class="toolbar-action" (click)="logout()" aria-label="Se déconnecter" title="Se déconnecter">
+          <span class="toolbar-icon" aria-hidden="true">↩</span>
+          <span>Déconnexion</span>
+        </button>
+      } @else {
+        <a routerLink="/login" routerLinkActive="is-active" ariaCurrentWhenActive="page">
+          <span class="toolbar-icon" aria-hidden="true">↪</span>
+          <span>Connexion</span>
+        </a>
+      }
+      <button
+        type="button"
+        class="toolbar-action theme-toggle"
+        (click)="toggleTheme()"
+        [attr.aria-label]="darkMode() ? 'Passer en mode clair' : 'Passer en mode sombre'"
+        [attr.title]="darkMode() ? 'Passer en mode clair' : 'Passer en mode sombre'"
+        [attr.aria-pressed]="darkMode()"
+      >
+        <span class="theme-switch" aria-hidden="true">
+          <span class="theme-sun">☀</span>
+          <span class="theme-track"><span class="theme-thumb"></span></span>
+          <span class="theme-moon">☾</span>
+        </span>
+      </button>
+    </nav>
+  </header>
+
+  <main>
+    <router-outlet />
+  </main>
+</div>

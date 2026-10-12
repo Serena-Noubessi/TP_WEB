@@ -1,0 +1,161 @@
+@let d = deck();
+<section class="deck" [style.--deck-color]="color()" [attr.aria-label]="'Platine ' + deckId()">
+  <div class="deck-header">
+    <span class="deck-badge">{{ deckId() }}</span>
+    <div class="deck-title">
+      @if (d.track(); as track) {
+        <strong [title]="displayTitle(track)">{{ displayTitle(track) }}</strong>
+        <small>
+          @if (d.loading()) {
+            @if (d.downloadProgress() !== null) {
+              Téléchargement {{ (d.downloadProgress()! * 100).toFixed(0) }} %
+            } @else {
+              Chargement…
+            }
+          } @else {
+            {{ categoryOf(track).icon }} {{ categoryOf(track).label }} ·
+            @if (track.online) {
+              {{ track.online.artist }} ·
+            }
+            {{ formatTime(d.time()) }} · −{{ formatTime(remaining()) }}
+          }
+        </small>
+      } @else {
+        <strong>Platine vide</strong>
+        <small>Glissez un morceau ici ou utilisez « Charger {{ deckId() }} »</small>
+      }
+    </div>
+    <div class="deck-bpm">
+      <strong>{{ d.bpm() !== null ? d.bpm()!.toFixed(1) : '—' }}</strong>
+      <small>BPM</small>
+      @if (d.analysis()) {
+        <span class="bpm-fix">
+          <button type="button" class="mini" (click)="scaleBpm(0.5)" title="Tempo détecté au double : diviser par deux" aria-label="Diviser le BPM par deux">½</button>
+          <button type="button" class="mini" (click)="scaleBpm(2)" title="Tempo détecté à la moitié : doubler" aria-label="Doubler le BPM">×2</button>
+        </span>
+      }
+    </div>
+  </div>
+
+  @if (d.error()) {
+    <p class="deck-error" role="alert">{{ d.error() }}</p>
+  }
+
+  <app-dj-waveform [deck]="d" [color]="color()" />
+
+  <div class="deck-body">
+    <app-dj-jog-wheel [deck]="d" [color]="color()" />
+
+    <div class="pitch">
+      <label class="pitch-slider">
+        <span class="sr-only">Pitch de la platine {{ deckId() }}</span>
+        <input
+          type="range"
+          [min]="-d.pitchRange()"
+          [max]="d.pitchRange()"
+          step="0.01"
+          [value]="d.pitch()"
+          (input)="changePitch($event)"
+          (dblclick)="resetPitch()"
+          [attr.aria-valuetext]="formatPercent(d.pitch())"
+        />
+      </label>
+      <output class="pitch-value">{{ formatPercent(d.pitch()) }}</output>
+      <label class="pitch-range">
+        <span class="sr-only">Amplitude du pitch</span>
+        <select [value]="d.pitchRange()" (change)="changePitchRange($event)">
+          @for (range of pitchRanges; track range) {
+            <option [value]="range" [selected]="range === d.pitchRange()">±{{ range }} %</option>
+          }
+        </select>
+      </label>
+      <div class="nudge">
+        <button
+          type="button"
+          class="mini"
+          aria-label="Freiner temporairement"
+          title="Freiner (maintenir)"
+          (pointerdown)="d.nudge(-1)"
+          (pointerup)="d.nudge(0)"
+          (pointerleave)="d.nudge(0)"
+        >−</button>
+        <button
+          type="button"
+          class="mini"
+          aria-label="Accélérer temporairement"
+          title="Accélérer (maintenir)"
+          (pointerdown)="d.nudge(1)"
+          (pointerup)="d.nudge(0)"
+          (pointerleave)="d.nudge(0)"
+        >+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="transport">
+    <button type="button" class="pad cue" (click)="d.cue()" [disabled]="!d.loaded()" title="À l’arrêt : poser le repère · en lecture : y revenir">CUE</button>
+    <button
+      type="button"
+      class="pad play"
+      [class.is-on]="d.playing()"
+      (click)="togglePlay()"
+      [disabled]="!d.loaded()"
+      [attr.aria-label]="d.playing() ? 'Pause platine ' + deckId() : 'Lecture platine ' + deckId()"
+    >{{ d.playing() ? '❚❚' : '▶' }}</button>
+    <button
+      type="button"
+      class="pad sync"
+      [class.is-on]="d.synced()"
+      [attr.aria-pressed]="d.synced()"
+      (click)="toggleSync()"
+      [disabled]="!d.analysis()"
+      title="Caler le tempo et les temps sur l’autre platine"
+    >SYNC</button>
+  </div>
+
+  <div class="pads">
+    <span class="pads-label">Hot cues</span>
+    @for (index of hotCueIndexes; track index) {
+      <button
+        type="button"
+        class="pad hot"
+        [class.is-set]="d.hotCues()[index] !== null"
+        (click)="hotCue(index, $event)"
+        (contextmenu)="clearHotCue(index, $event)"
+        [disabled]="!d.loaded()"
+        [attr.aria-label]="d.hotCues()[index] !== null ? 'Aller au repère ' + (index + 1) : 'Poser le repère ' + (index + 1)"
+        title="Clic : poser / rappeler · Maj+clic ou clic droit : effacer"
+      >{{ index + 1 }}</button>
+    }
+  </div>
+
+  <div class="pads">
+    <span class="pads-label">Boucle</span>
+    @for (beats of loopSizes; track beats) {
+      <button
+        type="button"
+        class="pad loop"
+        [class.is-on]="d.loop()?.beats === beats"
+        [attr.aria-pressed]="d.loop()?.beats === beats"
+        (click)="d.setLoop(beats)"
+        [disabled]="!d.analysis()"
+        [attr.aria-label]="'Boucle de ' + beats + ' temps'"
+      >{{ beats }}</button>
+    }
+  </div>
+
+  <div class="fx">
+    @for (effect of effects; track effect.type) {
+      <app-dj-knob
+        [label]="effect.label"
+        [value]="d.fx()[effect.type]"
+        [min]="0"
+        [max]="1"
+        [defaultValue]="0"
+        [color]="color()"
+        [valueText]="(d.fx()[effect.type] * 100).toFixed(0) + ' %'"
+        (valueChange)="d.setFx(effect.type, $event)"
+      />
+    }
+  </div>
+</section>

@@ -1,0 +1,13 @@
+{
+  "name": "generateur-musique",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Génère des morceaux instrumentaux libres de droits, au tempo connu, pour tester l'onglet Mixage.",
+  "type": "module",
+  "scripts": {
+    "generer": "node generer.mjs"
+  },
+  "dependencies": {
+    "lamejs": "1.2.1"
+  }
+}

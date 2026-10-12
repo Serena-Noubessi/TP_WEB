@@ -1,0 +1,42 @@
+<section #console class="mix-page" [class.has-visuals]="visuals.enabled()" [class.is-fullscreen]="visuals.fullscreen()">
+  <div class="mix-hero">
+    <div>
+      <p class="mix-eyebrow">TABLE DE MIXAGE</p>
+      <h1>Mixage DJ</h1>
+      <p class="mix-intro">Chargez vos morceaux sur les platines, calez les tempos et mixez.</p>
+    </div>
+    <dl class="shortcuts" aria-label="Raccourcis clavier">
+      <div><dt>Q / P</dt><dd>Lecture A / B</dd></div>
+      <div><dt>W / O</dt><dd>Cue A / B</dd></div>
+      <div><dt>S / L</dt><dd>Sync A / B</dd></div>
+    </dl>
+  </div>
+
+  <app-dj-visualizer #visuals [fullscreenTarget]="console" />
+
+  <div class="console">
+    <div
+      class="drop-zone"
+      [class.is-target]="dropTarget() === 'A'"
+      (dragover)="dragOver('A', $event)"
+      (dragleave)="dragLeave('A')"
+      (drop)="drop('A', $event)"
+    >
+      <app-dj-deck deckId="A" color="#2ee6c5" />
+    </div>
+
+    <app-dj-mixer class="console-mixer" />
+
+    <div
+      class="drop-zone"
+      [class.is-target]="dropTarget() === 'B'"
+      (dragover)="dragOver('B', $event)"
+      (dragleave)="dragLeave('B')"
+      (drop)="drop('B', $event)"
+    >
+      <app-dj-deck deckId="B" color="#ff5fa2" />
+    </div>
+  </div>
+
+  <app-dj-library />
+</section>

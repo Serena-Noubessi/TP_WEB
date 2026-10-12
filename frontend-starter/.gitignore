@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.angular/
+
+# Clés des catalogues de musique en ligne (Jamendo…) : jamais dans Git
+public/catalogs.local.json

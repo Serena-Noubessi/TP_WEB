@@ -1,0 +1,120 @@
+/*
+ * La console a besoin de plus de largeur que les autres pages (1050 px).
+ * Élargissement par marges négatives et non par transform : un transform
+ * ferait de :host le référentiel du canvas fixe du fond animé, qui ne
+ * couvrirait alors plus la fenêtre.
+ */
+:host {
+  --console-width: min(1500px, calc(100vw - 2.5rem));
+  display: block;
+  width: var(--console-width);
+  margin-inline: calc((100% - var(--console-width)) / 2);
+}
+
+:host .mix-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 20px;
+  color: #e4e8f0;
+  background: #0d0f13;
+}
+
+/* Fond animé actif : la page devient transparente et les panneaux translucides. */
+:host .mix-page.has-visuals {
+  --dj-panel-bg: rgb(16 18 24 / 72%);
+  --dj-panel-blur: blur(4px);
+  background: transparent;
+}
+
+/* Plein écran : la console entière occupe l'écran, Butterchurn de bord à bord derrière elle. */
+:host .mix-page:fullscreen {
+  align-content: start;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  border-radius: 0;
+}
+
+:host .mix-page:fullscreen::backdrop { background: #000; }
+
+:host .mix-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0.4rem 0;
+}
+
+:host .mix-hero h1 {
+  margin: 0.2rem 0;
+  color: #f3f5f9;
+}
+
+:host .mix-hero .mix-eyebrow {
+  margin: 0;
+  color: #2ee6c5;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+}
+
+:host .mix-hero .mix-intro {
+  margin: 0;
+  color: #9aa3b5;
+}
+
+:host .shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin: 0;
+}
+
+:host .shortcuts div {
+  display: flex;
+  gap: 0.35rem;
+  align-items: baseline;
+}
+
+:host .shortcuts dt {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid #353c4a;
+  border-radius: 5px;
+  color: #e4e8f0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+
+:host .shortcuts dd {
+  margin: 0;
+  color: #9aa3b5;
+  font-size: 0.8rem;
+}
+
+:host .console {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 17rem) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.8rem;
+}
+
+:host .drop-zone {
+  min-width: 0;
+  border-radius: 16px;
+  outline: 2px dashed transparent;
+  outline-offset: 3px;
+  transition: outline-color 120ms ease;
+}
+
+:host .drop-zone.is-target { outline-color: #ffd60a; }
+
+@media (max-width: 1100px) {
+  :host .console { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  :host .console-mixer { grid-column: 1 / -1; order: 3; }
+}
+
+@media (max-width: 720px) {
+  :host .console { grid-template-columns: minmax(0, 1fr); }
+}

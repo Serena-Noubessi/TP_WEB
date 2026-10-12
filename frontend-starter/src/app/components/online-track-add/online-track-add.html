@@ -1,0 +1,141 @@
+<article class="card online-card" aria-labelledby="online-title">
+  <h2 id="online-title">Ajouter depuis internet</h2>
+
+  <div class="online-tabs" role="tablist" aria-label="Façon d’ajouter un morceau en ligne">
+    <button type="button" role="tab" [attr.aria-selected]="mode() === 'url'" [class.is-active]="mode() === 'url'" (click)="setMode('url')">Lien direct</button>
+    <button type="button" role="tab" [attr.aria-selected]="mode() === 'catalog'" [class.is-active]="mode() === 'catalog'" (click)="setMode('catalog')">Catalogue libre</button>
+  </div>
+
+  <label class="category-pick">Catégorie des morceaux ajoutés
+    <select [formControl]="category">
+      @for (item of categories; track item.id) {
+        <option [value]="item.id">{{ item.icon }} {{ item.label }}</option>
+      }
+    </select>
+  </label>
+
+  @if (mode() === 'url') {
+    <form class="online-form" [formGroup]="urlForm" (ngSubmit)="addUrl()">
+      <label>Adresse du fichier audio
+        <input type="url" formControlName="url" placeholder="https://exemple.org/morceau.mp3" autocomplete="off" />
+      </label>
+      <p class="hint">Le lien doit mener directement au fichier (.mp3, .ogg, .wav…), pas à une page web. Pas de YouTube ni de Spotify.</p>
+      <label>Titre (facultatif)<input formControlName="title" /></label>
+      <label>Artiste (facultatif)<input formControlName="artist" /></label>
+      <label>Licence
+        <select formControlName="license">
+          @for (license of licenses; track license) {
+            <option [value]="license">{{ license }}</option>
+          }
+        </select>
+      </label>
+      <button type="submit" [disabled]="!!busyLabel()">Ajouter ce morceau</button>
+    </form>
+  } @else {
+    @let current = catalog();
+    @if (catalogService.catalogs.length > 1) {
+      <label>Catalogue
+        <select [value]="catalogId()" (change)="catalogId.set($any($event.target).value)">
+          @for (item of catalogService.catalogs; track item.id) {
+            <option [value]="item.id">{{ item.label }}</option>
+          }
+        </select>
+      </label>
+    }
+
+    @if (current.needsKey()) {
+      <div class="key-box">
+        <p>Pour chercher dans <b>{{ current.label }}</b>, il faut une <b>clé client</b> gratuite (usage non commercial).</p>
+        <ol>
+          <li>Créez un compte sur <a href="https://devportal.jamendo.com" target="_blank" rel="noopener noreferrer">devportal.jamendo.com</a> et déclarez une application.</li>
+          <li>Copiez son « Client ID » ici. Il reste dans ce navigateur et n’est jamais écrit dans le code.</li>
+        </ol>
+        <form class="key-form" (submit)="submitKey($event)">
+          <label>Client ID Jamendo<input [formControl]="keyInput" autocomplete="off" /></label>
+          <button type="submit" [disabled]="!keyInput.value.trim()">Enregistrer la clé</button>
+        </form>
+      </div>
+    } @else {
+      <form class="search-form" (submit)="submitSearch($event)">
+        <label>Rechercher dans {{ current.label }}
+          <input type="search" [formControl]="query" placeholder="Artiste, titre, style (house, chill…)" />
+        </label>
+        <button type="submit" [disabled]="searching()">{{ searching() ? 'Recherche…' : 'Rechercher' }}</button>
+      </form>
+      @if (searchError()) {
+        <p class="error" role="alert">{{ searchError() }}</p>
+      }
+      @if (searching()) {
+        <p role="status" class="hint">Recherche en cours…</p>
+      }
+      <ul class="results" aria-label="Résultats du catalogue">
+        @for (item of results(); track item.externalId) {
+          <li>
+            @if (item.imageUrl) {
+              <img [src]="item.imageUrl" alt="" width="44" height="44" loading="lazy" />
+            } @else {
+              <span class="no-image" aria-hidden="true">♪</span>
+            }
+            <span class="result-text">
+              <b>{{ item.title }}</b>
+              <small>{{ item.artist }} · {{ formatDuration(item.durationSeconds) }}</small>
+              <small>
+                @if (item.licenseUrl) {
+                  <a [href]="item.licenseUrl" target="_blank" rel="noopener noreferrer">{{ item.license }}</a>
+                } @else {
+                  {{ item.license }}
+                }
+                @if (item.pageUrl) {
+                  · <a [href]="item.pageUrl" target="_blank" rel="noopener noreferrer">Page {{ current.label }}</a>
+                }
+              </small>
+            </span>
+            <button type="button" (click)="addFromCatalog(item)" [disabled]="!!busyLabel() || isAdded(item)">
+              {{ isAdded(item) ? 'Ajouté' : addingId() === item.externalId ? 'Ajout…' : 'Ajouter' }}
+            </button>
+          </li>
+        } @empty {
+          @if (searched() && !searching() && !searchError()) {
+            <li class="empty">Aucun résultat.</li>
+          }
+        }
+      </ul>
+      @if (results().length) {
+        <div class="results-pager">
+          <button type="button" (click)="search(page() - 1)" [disabled]="page() === 1 || searching()">Préc.</button>
+          <span>Page {{ page() }}</span>
+          <button type="button" (click)="search(page() + 1)" [disabled]="!hasMore() || searching()">Suiv.</button>
+        </div>
+      }
+      <p class="credit"><a [href]="current.creditUrl" target="_blank" rel="noopener noreferrer">{{ current.credit }}</a></p>
+      <button type="button" class="link-button" (click)="forgetKey()">Changer de clé client</button>
+    }
+  }
+
+  @if (busyLabel()) {
+    <div class="download" role="status" aria-live="polite">
+      <span>{{ busyLabel() }}</span>
+      @if (percent() !== null) {
+        <progress max="100" [value]="percent()">{{ percent() }} %</progress>
+      } @else {
+        <progress aria-label="Téléchargement en cours"></progress>
+      }
+      @if (progress(); as p) {
+        <small>
+          {{ formatBytes(p.loaded) }}@if (p.total) { / {{ formatBytes(p.total) }} }
+          @if (p.bytesPerSecond) { · {{ formatBytes(p.bytesPerSecond) }}/s }
+        </small>
+      }
+      @if (slow()) {
+        <small class="slow">Connexion lente : le téléchargement continue, merci de patienter.</small>
+      }
+      <button type="button" class="cancel" (click)="cancel()">Annuler</button>
+    </div>
+  }
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (success()) {
+    <p class="success" role="status">{{ success() }}</p>
+  }
+</article>

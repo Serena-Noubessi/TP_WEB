@@ -1,0 +1,32 @@
+:host { display: block; }
+
+:host .waveforms {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.35rem;
+}
+
+:host canvas {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  border-radius: 8px;
+  background: #0b0d11;
+}
+
+:host canvas.zoom { height: 5.5rem; }
+
+:host canvas.overview {
+  height: 2.2rem;
+  cursor: pointer;
+}
+
+:host .waveforms .analysis-status {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.6rem;
+  margin: 0;
+  color: #ffd60a;
+  font-size: 0.75rem;
+}

@@ -1,0 +1,27 @@
+<!-- Fond animé : fixé sur toute la fenêtre, sous l'interface, ne capte aucun clic. -->
+<canvas #canvas class="backdrop" [class.is-on]="enabled()" aria-hidden="true"></canvas>
+
+<section class="visualizer" aria-labelledby="visualizer-title">
+  <h2 id="visualizer-title">Visuels Butterchurn</h2>
+  <button type="button" class="vz-button" [class.is-on]="enabled()" [attr.aria-pressed]="enabled()" (click)="toggle()" [disabled]="starting()">
+    {{ starting() ? 'Démarrage…' : enabled() ? 'Désactiver le fond animé' : 'Activer le fond animé' }}
+  </button>
+  @if (enabled()) {
+    <label class="vz-preset">
+      <span class="sr-only">Preset MilkDrop</span>
+      <select (change)="choosePreset($event)">
+        @for (name of presetNames(); track name) {
+          <option [value]="name" [selected]="name === currentPreset()">{{ name }}</option>
+        }
+      </select>
+    </label>
+    <button type="button" class="vz-button" (click)="randomPreset()">Aléatoire</button>
+    <button type="button" class="vz-button" [class.is-on]="autoChange()" [attr.aria-pressed]="autoChange()" (click)="toggleAutoChange()">Auto 30 s</button>
+  }
+  <button type="button" class="vz-button" [class.is-on]="fullscreen()" [attr.aria-pressed]="fullscreen()" (click)="toggleFullscreen()">
+    {{ fullscreen() ? 'Quitter le plein écran' : 'Plein écran' }}
+  </button>
+  @if (error()) {
+    <p class="vz-message" role="alert">{{ error() }}</p>
+  }
+</section>

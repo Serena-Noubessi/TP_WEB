@@ -1,0 +1,89 @@
+<article class="card bulk-card" aria-labelledby="bulk-title">
+  <h2 id="bulk-title">Importer plusieurs morceaux</h2>
+  <p class="hint">Choisissez un dossier entier (par exemple <code>musiques-generees</code>) ou plusieurs fichiers. Le classement est automatique : nom du dossier (« 01-house ») ou genre enregistré dans le MP3.</p>
+
+  <div class="pickers">
+    <label class="picker">
+      <span>📂 Choisir un dossier</span>
+      <input type="file" webkitdirectory multiple (change)="choose($event)" [disabled]="running() || analysing()" />
+    </label>
+    <label class="picker">
+      <span>🎵 Choisir des fichiers</span>
+      <input type="file" accept="audio/*" multiple (change)="choose($event)" [disabled]="running() || analysing()" />
+    </label>
+  </div>
+
+  @if (analysing()) {
+    <p role="status" class="hint">Lecture des fichiers…</p>
+  }
+
+  @if (items().length) {
+    <div class="detected">
+      <p><b>{{ items().length }}</b> morceau(x) prêt(s) à importer
+        @if (ignored()) { <span class="muted">· {{ ignored() }} fichier(s) ignoré(s) (format non accepté ou plus de 25 Mo)</span> }
+      </p>
+      <ul class="group-chips" aria-label="Répartition par catégorie">
+        @for (group of groups(); track group.category?.id ?? 'aucune') {
+          <li [style.--chip-color]="group.category?.color ?? '#b8c4bf'">
+            {{ group.category?.icon ?? '📁' }} {{ group.category?.label ?? 'Non classé' }} <b>{{ group.count }}</b>
+          </li>
+        }
+      </ul>
+      @if (unrecognised()) {
+        <label class="fallback">{{ unrecognised() }} morceau(x) sans catégorie reconnue → ranger dans
+          <select [value]="fallbackCategory()" (change)="setFallback($event)" [disabled]="running()">
+            @for (category of categories; track category.id) {
+              <option [value]="category.id" [selected]="category.id === fallbackCategory()">{{ category.icon }} {{ category.label }}</option>
+            }
+          </select>
+        </label>
+      }
+
+      @if (running() || finished()) {
+        <div class="progress" role="status" aria-live="polite">
+          <progress max="100" [value]="percent()">{{ percent() }} %</progress>
+          <span>{{ finished() }} / {{ items().length }} traité(s)</span>
+        </div>
+      }
+
+      <div class="actions">
+        @if (running()) {
+          <button type="button" class="secondary" (click)="cancel()">Arrêter</button>
+        } @else {
+          @if (remaining()) {
+            <button type="button" (click)="start()">Importer {{ remaining() }} morceau(x)</button>
+          }
+          <button type="button" class="secondary" (click)="clear()">{{ remaining() ? 'Vider la sélection' : 'Terminer' }}</button>
+        }
+      </div>
+
+      <details class="file-list">
+        <summary>Voir le détail des fichiers</summary>
+        <ul>
+          @for (item of items(); track item.file.name + $index) {
+            <li [class]="'status-' + item.status">
+              <span class="file-title">{{ item.title }}</span>
+              <span class="file-category">{{ categoryLabel(item) }}</span>
+              <span class="file-status">
+                @switch (item.status) {
+                  @case ('waiting') { en attente }
+                  @case ('sending') { envoi… }
+                  @case ('done') { ✓ importé }
+                  @case ('skipped') { déjà présent }
+                  @case ('error') { ✗ {{ item.message }} }
+                }
+              </span>
+            </li>
+          }
+        </ul>
+      </details>
+    </div>
+  }
+
+  @if (summary()) {
+    <p class="summary" role="status">{{ summary() }}</p>
+  }
+  @if (errors().length && !running()) {
+    <p class="error" role="alert">{{ errors().length }} morceau(x) n’ont pas pu être envoyés. Cliquez à nouveau sur « Importer » pour réessayer uniquement ceux-là.</p>
+  }
+</article>
