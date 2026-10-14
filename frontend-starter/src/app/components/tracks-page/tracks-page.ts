@@ -7,6 +7,7 @@ import { OnlineTrackService } from '../../shared/services/online-track.service';
 import { CategoryStatsService } from '../../shared/services/category-stats.service';
 import { CATEGORIES, categoryOf, categorySearch, displayTitle, findCategory, MusicCategory, titleWithCategory } from '../../shared/models/category.model';
 import { BulkImportComponent } from '../bulk-import/bulk-import';
+import { IconComponent } from '../icon/icon';
 import { TrackService } from '../../shared/services/track.service';
 import { OnlineTrackAddComponent } from '../online-track-add/online-track-add';
 
@@ -23,7 +24,7 @@ const ALLOWED_AUDIO_TYPES = new Set([
 const ALLOWED_COVER_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 @Component({
-  imports: [DatePipe, ReactiveFormsModule, OnlineTrackAddComponent, BulkImportComponent],
+  imports: [DatePipe, ReactiveFormsModule, OnlineTrackAddComponent, BulkImportComponent, IconComponent],
   templateUrl: './tracks-page.html',
   styleUrl: './tracks-page.css',
 })

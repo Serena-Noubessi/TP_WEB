@@ -4,6 +4,7 @@ import { readAudioTags } from '../../shared/audio/id3-reader';
 import { CATEGORIES, findCategory, guessCategory, MusicCategory, titleWithCategory } from '../../shared/models/category.model';
 import { Track } from '../../shared/models/track.model';
 import { TrackService } from '../../shared/services/track.service';
+import { IconComponent } from '../icon/icon';
 
 const MAX_AUDIO_FILE_SIZE = 25 * 1024 * 1024;
 const ALLOWED_AUDIO_TYPES = new Set(['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/mp4', 'audio/x-m4a']);
@@ -25,6 +26,7 @@ interface ImportItem {
  */
 @Component({
   selector: 'app-bulk-import',
+  imports: [IconComponent],
   templateUrl: './bulk-import.html',
   styleUrl: './bulk-import.css',
 })
@@ -148,9 +150,13 @@ export class BulkImportComponent implements OnDestroy {
     this.imported.emit();
   }
 
+  categoryIcon(item: ImportItem) {
+    return (item.category ?? findCategory(this.fallbackCategory()))?.icon ?? 'folder';
+  }
+
   categoryLabel(item: ImportItem): string {
     const category = item.category ?? findCategory(this.fallbackCategory());
-    return category ? `${category.icon} ${category.label}` : '—';
+    return category ? category.label : '—';
   }
 
   private patch(index: number, change: Partial<ImportItem>): void {

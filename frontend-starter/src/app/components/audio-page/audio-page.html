@@ -1,0 +1,173 @@
+@let current = player.current();
+<section #audioPage class="audio-page" [class.has-visuals]="visuals.enabled() && visuals.background()">
+  <div class="audio-hero">
+    <p class="eyebrow">ÉCOUTE</p>
+    <h1>Audio</h1>
+    <p class="intro">Écoutez vos morceaux avec des visuels qui suivent le rythme. La musique continue quand vous changez d’onglet.</p>
+  </div>
+
+  <div class="audio-grid">
+    <article class="panel player" aria-label="Lecteur">
+      <app-dj-visualizer #visuals [fullscreenTarget]="audioPage" [audioSource]="visualSource" [framedOption]="true" />
+
+      <div class="now-playing">
+        @if (current) {
+          @let category = categoryOf(current);
+          <span class="np-cover" [style.--cat]="category.color">
+            @if (current.online?.imageUrl; as image) {
+              <img [src]="image" alt="" />
+            } @else {
+              <app-icon [name]="category.icon" size="1.8rem" [strokeWidth]="1.6" />
+            }
+          </span>
+          <div class="np-text">
+            <strong [title]="displayTitle(current)">{{ displayTitle(current) }}</strong>
+            <small>
+              <app-icon [name]="category.icon" /> {{ category.label }}
+              @if (current.online) { · {{ current.online.artist }} }
+            </small>
+          </div>
+        } @else {
+          <span class="np-cover"><app-icon name="audio-lines" size="1.8rem" [strokeWidth]="1.6" /></span>
+          <div class="np-text">
+            <strong>Aucun morceau</strong>
+            <small>Choisissez un morceau dans la liste.</small>
+          </div>
+        }
+        @if (player.loading()) {
+          <span class="np-status" role="status">Chargement…</span>
+        }
+      </div>
+
+      <div class="timeline">
+        <span>{{ formatTime(player.time()) }}</span>
+        <label class="range-wrap">
+          <span class="sr-only">Position dans le morceau</span>
+          <input type="range" min="0" max="100" step="0.1" [value]="progress()" (input)="seek($event)" [disabled]="!current" [style.--fill]="progress() + '%'" [attr.aria-valuetext]="formatTime(player.time()) + ' sur ' + formatTime(player.duration())" />
+        </label>
+        <span>{{ formatTime(player.duration()) }}</span>
+      </div>
+
+      <div class="transport">
+        <button type="button" class="icon-button" [class.is-on]="player.shuffle()" [attr.aria-pressed]="player.shuffle()" (click)="player.toggleShuffle()" aria-label="Lecture aléatoire" title="Lecture aléatoire">
+          <app-icon name="shuffle" />
+        </button>
+        <button type="button" class="icon-button" (click)="player.previous()" [disabled]="!current" aria-label="Morceau précédent" title="Précédent">
+          <app-icon name="skip-back" />
+        </button>
+        <button type="button" class="play-button" (click)="current ? player.togglePlay() : play(0)" [disabled]="!displayed().length" [attr.aria-label]="player.playing() ? 'Pause' : 'Lecture'">
+          <app-icon [name]="player.playing() ? 'pause' : 'play'" size="1.6rem" />
+        </button>
+        <button type="button" class="icon-button" (click)="player.next()" [disabled]="!current" aria-label="Morceau suivant" title="Suivant">
+          <app-icon name="skip-forward" />
+        </button>
+        <button type="button" class="icon-button" [class.is-on]="player.repeat() !== 'off'" (click)="player.cycleRepeat()" [attr.aria-label]="player.repeat() === 'one' ? 'Répéter ce morceau' : player.repeat() === 'all' ? 'Répéter la liste' : 'Pas de répétition'" [title]="player.repeat() === 'one' ? 'Répéter ce morceau' : player.repeat() === 'all' ? 'Répéter la liste' : 'Pas de répétition'">
+          <app-icon [name]="player.repeat() === 'one' ? 'repeat-one' : 'repeat'" />
+        </button>
+      </div>
+
+      <div class="settings">
+        <div class="setting">
+          <div class="setting-head">
+            <span><app-icon name="gauge" /> Vitesse</span>
+            <output>{{ player.rate().toFixed(2) }}×</output>
+          </div>
+          <label class="range-wrap">
+            <span class="sr-only">Vitesse de lecture</span>
+            <input type="range" [min]="minRate" [max]="maxRate" step="0.05" [value]="player.rate()" (input)="changeRate($event)" (dblclick)="player.setRate(1)" [attr.aria-valuetext]="player.rate().toFixed(2) + ' fois'" />
+          </label>
+          <div class="chips">
+            @for (rate of ratePresets; track rate) {
+              <button type="button" class="chip" [class.is-on]="player.rate() === rate" (click)="player.setRate(rate)">{{ rate }}×</button>
+            }
+          </div>
+          <label class="check">
+            <input type="checkbox" [checked]="player.preservePitch()" (change)="changePitch($event)" />
+            Conserver la tonalité (la voix ne devient pas plus aiguë ou plus grave)
+          </label>
+        </div>
+
+        <div class="setting">
+          <div class="setting-head">
+            <span>
+              <button type="button" class="icon-button small" (click)="player.toggleMute()" [attr.aria-label]="player.muted() ? 'Rétablir le son' : 'Couper le son'" [title]="player.muted() ? 'Rétablir le son' : 'Couper le son'">
+                <app-icon [name]="player.muted() || player.volume() === 0 ? 'volume-off' : 'volume'" />
+              </button>
+              Volume
+            </span>
+            <output>{{ player.muted() ? 'Muet' : (player.volume() * 100).toFixed(0) + ' %' }}</output>
+          </div>
+          <label class="range-wrap">
+            <span class="sr-only">Volume</span>
+            <input type="range" min="0" max="1" step="0.01" [value]="player.volume()" (input)="changeVolume($event)" [attr.aria-valuetext]="(player.volume() * 100).toFixed(0) + ' %'" />
+          </label>
+        </div>
+      </div>
+
+      @if (player.error()) {
+        <p class="message" role="alert">{{ player.error() }}</p>
+      }
+      <p class="hint">Raccourcis : Espace lecture/pause · ← → reculer/avancer de 5 s.</p>
+    </article>
+
+    <article class="panel library" aria-labelledby="audio-library-title">
+      <div class="library-head">
+        <h2 id="audio-library-title">Morceaux</h2>
+        <label class="search">
+          <span class="sr-only">Rechercher un morceau</span>
+          <input type="search" [value]="search()" (input)="filter($event)" placeholder="Rechercher un morceau…" />
+        </label>
+      </div>
+
+      <div class="pills" role="toolbar" aria-label="Catégories">
+        <button type="button" class="pill" [class.is-on]="categoryFilter() === ''" [attr.aria-pressed]="categoryFilter() === ''" (click)="selectCategory('')" style="--cat: #e4e8f0">
+          <app-icon name="library" /> Tous
+        </button>
+        @for (category of categories; track category.id) {
+          <button type="button" class="pill" [class.is-on]="categoryFilter() === category.id" [attr.aria-pressed]="categoryFilter() === category.id" (click)="selectCategory(category.id)" [style.--cat]="category.color">
+            <app-icon [name]="category.icon" /> {{ category.label }}
+            <span class="count">{{ categoryCount(category) ?? '…' }}</span>
+          </button>
+        }
+      </div>
+
+      @if (error()) {
+        <p class="message" role="alert">{{ error() }}</p>
+      }
+      @if (loading()) {
+        <p class="message" role="status">Chargement…</p>
+      }
+
+      <ol class="tracks">
+        @for (track of displayed(); track track.id; let index = $index) {
+          @let category = categoryOf(track);
+          <li [class.is-current]="isCurrent(track)" [style.--cat]="category.color">
+            <button type="button" class="row" (click)="play(index)" [attr.aria-label]="(isCurrent(track) && player.playing() ? 'Pause ' : 'Écouter ') + displayTitle(track)">
+              <span class="row-icon">
+                @if (isCurrent(track) && player.playing()) {
+                  <span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>
+                } @else {
+                  <app-icon [name]="isCurrent(track) ? 'play' : category.icon" />
+                }
+              </span>
+              <span class="row-text">
+                <strong>{{ displayTitle(track) }}</strong>
+                <small>{{ category.label }}@if (track.online) { · {{ track.online.artist }} · {{ track.online.sourceLabel }} }</small>
+              </span>
+            </button>
+          </li>
+        } @empty {
+          @if (!loading() && !error()) {
+            <li class="empty">Aucun morceau dans cette catégorie.</li>
+          }
+        }
+      </ol>
+
+      <div class="pager">
+        <button type="button" class="ghost" (click)="go(page() - 1)" [disabled]="page() === 1">Préc.</button>
+        <span>Page {{ page() }} / {{ pages() }}</span>
+        <button type="button" class="ghost" (click)="go(page() + 1)" [disabled]="page() >= pages()">Suiv.</button>
+      </div>
+    </article>
+  </div>
+</section>

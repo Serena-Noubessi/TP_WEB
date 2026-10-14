@@ -1,10 +1,12 @@
+import { IconName } from '../icons/icons';
 import { Track } from './track.model';
 
 /** Catégorie musicale d'un morceau. */
 export interface MusicCategory {
   id: string;
   label: string;
-  icon: string;
+  /** Icône Lucide (voir shared/icons/icons.ts). */
+  icon: IconName;
   /** Couleur principale (pastilles, bordures). */
   color: string;
   /** Mots reconnus dans un nom de dossier ou une étiquette de genre (ID3) pour classer automatiquement. */
@@ -12,18 +14,18 @@ export interface MusicCategory {
 }
 
 export const CATEGORIES: MusicCategory[] = [
-  { id: 'house', label: 'House', icon: '🏠', color: '#2ec4a6', aliases: ['house', 'deep house'] },
-  { id: 'dance-house', label: 'Dance House', icon: '💃', color: '#ff5fa2', aliases: ['dance house', 'dance-house', 'dance', 'edm'] },
-  { id: 'electro', label: 'Electro', icon: '⚡', color: '#f5b700', aliases: ['electro', 'electronic', 'electronica'] },
-  { id: 'pop', label: 'Pop', icon: '🎤', color: '#a66cff', aliases: ['pop'] },
-  { id: 'hip-hop', label: 'Hip-Hop', icon: '🎧', color: '#ff7a3d', aliases: ['hip-hop', 'hip hop', 'hiphop', 'rap'] },
-  { id: 'techno', label: 'Techno', icon: '🤖', color: '#3d8bff', aliases: ['techno'] },
-  { id: 'dubstep', label: 'Dubstep', icon: '🔊', color: '#22c55e', aliases: ['dubstep'] },
-  { id: 'autre', label: 'Autre', icon: '🌍', color: '#94a3b8', aliases: ['autre', 'other'] },
+  { id: 'house', label: 'House', icon: 'house', color: '#2ec4a6', aliases: ['house', 'deep house'] },
+  { id: 'dance-house', label: 'Dance House', icon: 'disc', color: '#ff5fa2', aliases: ['dance house', 'dance-house', 'dance', 'edm'] },
+  { id: 'electro', label: 'Electro', icon: 'zap', color: '#f5b700', aliases: ['electro', 'electronic', 'electronica'] },
+  { id: 'pop', label: 'Pop', icon: 'mic', color: '#a66cff', aliases: ['pop'] },
+  { id: 'hip-hop', label: 'Hip-Hop', icon: 'headphones', color: '#ff7a3d', aliases: ['hip-hop', 'hip hop', 'hiphop', 'rap'] },
+  { id: 'techno', label: 'Techno', icon: 'cpu', color: '#3d8bff', aliases: ['techno'] },
+  { id: 'dubstep', label: 'Dubstep', icon: 'waveform', color: '#22c55e', aliases: ['dubstep'] },
+  { id: 'autre', label: 'Autre', icon: 'globe', color: '#94a3b8', aliases: ['autre', 'other'] },
 ];
 
 /** Catégorie affichée pour les morceaux importés avant le classement. */
-export const UNCLASSIFIED: MusicCategory = { id: 'non-classe', label: 'Non classé', icon: '📁', color: '#b8c4bf', aliases: [] };
+export const UNCLASSIFIED: MusicCategory = { id: 'non-classe', label: 'Non classé', icon: 'folder', color: '#b8c4bf', aliases: [] };
 
 /**
  * Le backend ne stocke qu'un titre : la catégorie est donc écrite en tête du titre,

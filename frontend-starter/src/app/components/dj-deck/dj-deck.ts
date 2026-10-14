@@ -5,11 +5,12 @@ import { categoryOf, displayTitle } from '../../shared/models/category.model';
 import { DjJogWheelComponent } from '../dj-jog-wheel/dj-jog-wheel';
 import { DjKnobComponent } from '../dj-knob/dj-knob';
 import { DjWaveformComponent } from '../dj-waveform/dj-waveform';
+import { IconComponent } from '../icon/icon';
 
 /** Une platine : forme d'onde, vinyle, transport, pitch, repères, boucles et effets. */
 @Component({
   selector: 'app-dj-deck',
-  imports: [DjJogWheelComponent, DjKnobComponent, DjWaveformComponent],
+  imports: [DjJogWheelComponent, DjKnobComponent, DjWaveformComponent, IconComponent],
   templateUrl: './dj-deck.html',
   styleUrl: './dj-deck.css',
 })

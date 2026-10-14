@@ -91,3 +91,32 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* Cadre (onglet Audio) : le canvas remplit un cadre au lieu de toute la fenêtre. */
+:host .stage { display: contents; }
+
+:host .stage.is-framed {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 0.8rem;
+  overflow: hidden;
+  border-radius: 14px;
+  background: radial-gradient(circle at 50% 40%, #1d2330, #07080b);
+}
+
+:host .stage.is-framed canvas.backdrop {
+  position: absolute;
+  z-index: 0;
+}
+
+:host .stage-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  margin: 0;
+  padding: 1rem;
+  place-items: center;
+  color: #8891a3;
+  text-align: center;
+}

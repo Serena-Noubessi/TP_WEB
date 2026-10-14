@@ -1,34 +1,40 @@
 <div class="app-shell" [class.dark-mode]="darkMode()">
   <header class="site-header">
     <a class="brand" routerLink="/tracks" aria-label="Accueil Guitar Practice Cloud">
-      <span class="brand-mark" aria-hidden="true">♫</span>
+      <span class="brand-mark" aria-hidden="true"><app-icon name="music" /></span>
       <span>
         <b>Guitar Practice Cloud</b>
         <small>Le cloud qui manque à votre ampli</small>
       </span>
     </a>
 
+    <app-mini-player />
+
     <nav class="toolbar" aria-label="Navigation principale">
       <a routerLink="/tracks" routerLinkActive="is-active" ariaCurrentWhenActive="page">
-        <span class="toolbar-icon" aria-hidden="true">♫</span>
+        <span class="toolbar-icon" aria-hidden="true"><app-icon name="list-music" /></span>
         <span>Backing tracks</span>
       </a>
+      <a routerLink="/audio" routerLinkActive="is-active" ariaCurrentWhenActive="page">
+        <span class="toolbar-icon" aria-hidden="true"><app-icon name="audio-lines" /></span>
+        <span>Audio</span>
+      </a>
       <a routerLink="/mix" routerLinkActive="is-active" ariaCurrentWhenActive="page">
-        <span class="toolbar-icon" aria-hidden="true">🎧</span>
+        <span class="toolbar-icon" aria-hidden="true"><app-icon name="sliders" /></span>
         <span>Mixage</span>
       </a>
       <a routerLink="/profile" routerLinkActive="is-active" ariaCurrentWhenActive="page">
-        <span class="toolbar-icon" aria-hidden="true">👤</span>
+        <span class="toolbar-icon" aria-hidden="true"><app-icon name="user" /></span>
         <span>Profil</span>
       </a>
       @if (auth.token()) {
         <button type="button" class="toolbar-action" (click)="logout()" aria-label="Se déconnecter" title="Se déconnecter">
-          <span class="toolbar-icon" aria-hidden="true">↩</span>
+          <span class="toolbar-icon" aria-hidden="true"><app-icon name="log-out" /></span>
           <span>Déconnexion</span>
         </button>
       } @else {
         <a routerLink="/login" routerLinkActive="is-active" ariaCurrentWhenActive="page">
-          <span class="toolbar-icon" aria-hidden="true">↪</span>
+          <span class="toolbar-icon" aria-hidden="true"><app-icon name="log-in" /></span>
           <span>Connexion</span>
         </a>
       }
@@ -41,9 +47,9 @@
         [attr.aria-pressed]="darkMode()"
       >
         <span class="theme-switch" aria-hidden="true">
-          <span class="theme-sun">☀</span>
+          <span class="theme-sun"><app-icon name="sun" /></span>
           <span class="theme-track"><span class="theme-thumb"></span></span>
-          <span class="theme-moon">☾</span>
+          <span class="theme-moon"><app-icon name="moon" /></span>
         </span>
       </button>
     </nav>

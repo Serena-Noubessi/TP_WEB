@@ -12,6 +12,11 @@ export const routes: Routes = [
   { path: 'profile', component: ProfilePageComponent, canActivate: [authGuard] },
   { path: 'tracks', component: TracksPageComponent, canActivate: [authGuard] },
   {
+    path: 'audio',
+    loadComponent: () => import('./components/audio-page/audio-page').then((m) => m.AudioPageComponent),
+    canActivate: [authGuard],
+  },
+  {
     path: 'mix',
     loadComponent: () => import('./components/mix-page/mix-page').then((m) => m.MixPageComponent),
     canActivate: [authGuard],

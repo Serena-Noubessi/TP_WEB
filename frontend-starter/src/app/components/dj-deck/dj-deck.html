@@ -13,7 +13,7 @@
               Chargement…
             }
           } @else {
-            {{ categoryOf(track).icon }} {{ categoryOf(track).label }} ·
+            <app-icon [name]="categoryOf(track).icon" /> {{ categoryOf(track).label }} ·
             @if (track.online) {
               {{ track.online.artist }} ·
             }
@@ -101,7 +101,7 @@
       (click)="togglePlay()"
       [disabled]="!d.loaded()"
       [attr.aria-label]="d.playing() ? 'Pause platine ' + deckId() : 'Lecture platine ' + deckId()"
-    >{{ d.playing() ? '❚❚' : '▶' }}</button>
+    ><app-icon [name]="d.playing() ? 'pause' : 'play'" size="1.2rem" /></button>
     <button
       type="button"
       class="pad sync"

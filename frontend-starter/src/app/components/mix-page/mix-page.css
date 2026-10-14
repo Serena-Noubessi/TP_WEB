@@ -65,6 +65,51 @@
   color: #9aa3b5;
 }
 
+:host .mix-hero button.autoplay {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid #353c4a;
+  border-radius: 999px;
+  color: #c3c9d5;
+  background: rgb(26 30 38 / 80%);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+:host .mix-hero button.autoplay.is-on {
+  border-color: #2ee6c5;
+  color: #e4e8f0;
+}
+
+:host .mix-hero button.autoplay:focus-visible {
+  outline: 2px solid #2ee6c5;
+  outline-offset: 2px;
+}
+
+:host .autoplay .switch-track {
+  display: inline-flex;
+  width: 2.1rem;
+  height: 1.15rem;
+  padding: 0.15rem;
+  border-radius: 999px;
+  background: #3a4150;
+  transition: background-color 160ms ease;
+}
+
+:host .autoplay.is-on .switch-track { background: #2ee6c5; }
+
+:host .autoplay .switch-thumb {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background: white;
+  transition: transform 160ms ease;
+}
+
+:host .autoplay.is-on .switch-thumb { transform: translateX(0.95rem); }
+
 :host .shortcuts {
   display: flex;
   flex-wrap: wrap;

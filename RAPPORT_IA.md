@@ -24,6 +24,10 @@ Ce fichier trace **chaque demande** faite à l'assistant IA (Claude Code), **dan
 | 10 | 11/10/2026 | « Pourquoi je ne vois pas les prompts récents dans le rapport ? » | Rapport réorganisé dans l'ordre chronologique, chaque demande citée | Non |
 | 11 | 11/10/2026 | Ajouter des morceaux depuis internet (lien direct + catalogue libre Jamendo), utilisables sur les decks comme un morceau local | Fait et testé ; serveur intermédiaire pour les sites sans CORS proposé, en attente de décision | Non |
 | 12 | 11/10/2026 | Ajouter les musiques générées et les classer par catégories dans Backing tracks et Mixage, avec une jolie présentation | 400 morceaux importés et classés ; grille de catégories (Backing tracks) et bacs (Mixage) | Non (code) — 400 fichiers ajoutés aux données via l'API |
+| 13 | 12/10/2026 | Lancer automatiquement la lecture dès qu'un morceau est choisi pour le lecteur 1 ou 2 (sans appuyer sur Lecture) | Fait et testé ; interrupteur « Lecture automatique » (activé par défaut) | Non |
+| 14 | 12/10/2026 | Remplacer les icônes et emojis par des icônes professionnelles | Fait : icônes vectorielles Lucide partout, plus aucun emoji | Non |
+| 15 | 12/10/2026 | Nouvel onglet Audio : écoute simple, Butterchurn qui suit le rythme, vitesse de lecture, volume, mode arrière-plan | Fait et testé (lecteur, vitesse, volume, visuels en cadre ou en fond d'écran, lecture en arrière-plan avec mini-lecteur) | Non |
+| 16 | 14/10/2026 | « Pourquoi j'ai une erreur de connexion lors du login ? » | Cause : le backend n'était plus démarré ; relancé, le login fonctionne de nouveau | Non |
 
 ---
 
@@ -538,5 +542,222 @@ Serveur intermédiaire pour les sites qui refusent le CORS (comme SoundHelix) : 
   - `online-track-add` (`.ts`, `.html`, `.css`) ;
   - `online-track.service.ts` et `track.model.ts` (champ `category`).
 - **Non modifiés :** le code du backend et `API_CONTRACT.md`. Les 400 morceaux ont été ajoutés aux **données** du backend (fichiers dans `backend/data/uploads` et fiches dans MongoDB) par la route existante, comme l'aurait fait un utilisateur.
+
+**État :** terminé.
+
+## Demande 13 — Lecture automatique au chargement (en cours)
+
+> « Au moment de lancer le mixage, je ne veux pas qu'à chaque fois on doive appuyer sur le start pour que le son se lance. Une fois qu'on a choisi le son pour le lecteur 1 et 2 depuis la catégorie, que ça se lance tout seul. »
+
+### Ce qui a été fait
+
+- **Démarrage automatique :** dès qu'un morceau choisi dans un bac (ou glissé sur une platine) est téléchargé et décodé, la platine **se met en lecture toute seule**. Il n'y a plus besoin d'appuyer sur ▶.
+- **Pas d'attente :** la lecture démarre sans attendre la fin de l'analyse du tempo, qui continue en arrière-plan.
+- **Règle du navigateur respectée :** un navigateur n'autorise un son qu'après un geste de l'utilisateur. Le clic sur « Charger A/B » (ou le glisser-déposer) compte comme ce geste : le moteur audio est activé à ce moment-là.
+- **Interrupteur « Lecture automatique au chargement »** dans l'en-tête de l'onglet Mixage :
+  - il est activé par défaut ;
+  - on peut le couper pour préparer un morceau en silence (pour placer un repère avant de le lancer, par exemple) ;
+  - le choix est retenu dans le navigateur.
+- **Fichiers modifiés :** `shared/services/dj-engine.service.ts` (signal `autoPlay`, démarrage après décodage, préférence enregistrée), `components/mix-page/` (`.html`, `.css` : interrupteur). Le backend n'est pas modifié.
+
+### Vérifications (Chrome piloté par script, son coupé)
+
+1. Bac House → « Charger A », sans clic sur Lecture : la platine A joue (« Pause platine A », 0:02.6).
+2. Bac Techno → « Charger B », sans clic sur Lecture : la platine B joue (0:02.4), et la platine A continue (0:08.9).
+3. Interrupteur coupé → nouveau morceau sur A : il reste à l'arrêt, à 0:00.0, comme attendu.
+4. Après rechargement de la page, l'interrupteur garde la position choisie.
+5. Aucune erreur console ; `npm run build` réussit et les 23 tests passent.
+
+**Capture :** `captures/lecture_automatique.png`.
+
+**À noter :** pour mixer, il est souvent utile que le second morceau démarre avec le volume de sa voie baissé ou le crossfader du côté du premier, puis de l'amener progressivement. La lecture automatique ne touche ni aux volumes ni au crossfader.
+
+**État :** terminé.
+
+## Demande 14 — Icônes professionnelles (en cours)
+
+> « Les icônes ajoutées ne sont pas des icônes professionnelles. Je veux que tu remplaces chaque icône ou emoji par des icônes professionnelles. »
+
+### Ce qui n'allait pas
+
+L'interface utilisait des **emojis et des symboles typographiques**. Leur rendu change selon le système (Windows, Mac, Android) et leurs styles sont disparates (couleurs, tailles), ce qui ne fait pas professionnel :
+- navigation : ♫ 👤 🎧 ↩ ↪ ☀ ☾ ;
+- catégories : 🏠 💃 ⚡ 🎤 🎧 🤖 🔊 🌍 📁 🎶 ;
+- import en lot : 📂 🎵 ✓ ✗ → ;
+- platines et lecture : ▶ ❚❚ ;
+- pochette absente : ♪.
+
+### Ce qui a été changé
+
+- **Bibliothèque d'icônes Lucide** (`lucide` 1.48.0, licence ISC, open source, très utilisée dans les applications professionnelles) :
+  - icônes vectorielles (SVG) au trait fin et homogène ;
+  - nettes à toutes les tailles ;
+  - de la couleur du texte qui les entoure, donc adaptées automatiquement au thème clair ou sombre.
+- **Nouveau composant `<app-icon>`** (`components/icon/icon.ts`) qui dessine l'icône demandée. Registre `shared/icons/icons.ts` : seules les 25 icônes utilisées sont incluses dans l'application.
+- **Correspondances :**
+
+  | Élément | Avant | Icône Lucide |
+  |---|---|---|
+  | Logo | ♫ | Music |
+  | Backing tracks | ♫ | ListMusic |
+  | Mixage | 🎧 | SlidersVertical |
+  | Profil | 👤 | User |
+  | Connexion / Déconnexion | ↪ / ↩ | LogIn / LogOut |
+  | Thème clair / sombre | ☀ / ☾ | Sun / Moon |
+  | Tous | 🎶 | LibraryBig |
+  | House | 🏠 | House |
+  | Dance House | 💃 | Disc3 |
+  | Electro | ⚡ | Zap |
+  | Pop | 🎤 | MicVocal |
+  | Hip-Hop | 🎧 | Headphones |
+  | Techno | 🤖 | Cpu |
+  | Dubstep | 🔊 | AudioWaveform |
+  | Autre | 🌍 | Globe |
+  | Non classé | 📁 | Folder |
+  | Choisir un dossier / des fichiers | 📂 / 🎵 | FolderOpen / FileAudio |
+  | Importé / en erreur | ✓ / ✗ | Check / X |
+  | Lecture / Pause | ▶ / ❚❚ | Play / Pause |
+  | Pas de pochette | ♪ | Music, ou l'icône de la catégorie |
+
+- **Menus déroulants** (choix de la catégorie) : une liste déroulante ne peut pas afficher d'icône dessinée, donc les emojis y ont été retirés et seul le nom reste.
+- **Accessibilité :** les icônes sont décoratives (`aria-hidden`). Le sens reste porté par le texte voisin ou par l'`aria-label` des boutons.
+
+**Fichiers :**
+- **Créés :** `components/icon/icon.ts`, `shared/icons/icons.ts`.
+- **Modifiés :**
+  - `shared/models/category.model.ts` (noms d'icônes au lieu d'emojis) ;
+  - `components/app/` (`.ts`, `.html`) ;
+  - `tracks-page`, `bulk-import`, `dj-library`, `dj-deck` et `online-track-add` (`.ts`, `.html`) ;
+  - `frontend-starter/package.json` et `package-lock.json` (ajout de `lucide`).
+- **Non modifiés :** le backend.
+
+### Vérifications
+
+- Recherche automatique dans tout le code de l'application : **aucun emoji ni symbole restant** (hors commentaires).
+- `npm run build` réussit, sans nouvel avertissement. `npm test` : 23 tests sur 23 réussis.
+- **Navigateur** (Chrome, son coupé) :
+  - 33 icônes dessinées sur Backing tracks et 27 sur Mixage, aucune vide ;
+  - rendu vérifié en thème clair et en thème sombre ;
+  - Lecture et Pause correctement affichés sur les platines ;
+  - aucune erreur console.
+- **Captures :** `captures/icones_backing_tracks.png`, `captures/icones_mixage_bibliotheque.png`, `captures/icones_mixage_platines.png`.
+
+**Remarque (non corrigée, hors demande) :** en thème sombre, le fond de la page reste clair autour des cartes. La cause vient du style d'origine de l'application : la règle `.app-shell { background: … }` de `app.css` l'emporte sur la règle du thème sombre de `styles.css`. Ce n'est pas lié aux icônes ; correction possible sur demande.
+
+**État :** terminé.
+
+## Demande 15 — Onglet Audio (en cours)
+
+> « Je veux également que tu ajoutes un onglet Audio où on aura la possibilité d'écouter juste du son, avec également l'intégration d'un Butterchurn qui suit le rythme de la musique. On doit pouvoir gérer la vitesse de lecture de la musique, régler le volume, et une possibilité de mettre en arrière-plan. »
+
+### Interprétation de « mettre en arrière-plan »
+
+La demande pouvait vouloir dire deux choses. Les deux ont été faites :
+1. **La musique continue en arrière-plan** quand on change d'onglet de l'application. Un **mini-lecteur** apparaît alors dans la barre du haut (lecture/pause, suivant, retour à l'onglet Audio). Les **touches multimédia** du clavier, du casque ou de l'écran de verrouillage du téléphone pilotent aussi le lecteur (API Media Session).
+2. **Les visuels peuvent passer en fond d'écran**, derrière le lecteur et la liste, comme dans le Mixage, ou rester dans un **cadre** au-dessus du lecteur.
+
+### Ce qui a été fait
+
+- **Onglet « Audio »** (route `/audio`, chargée à la demande et protégée), avec un lien dans la barre de navigation.
+- **Lecteur :**
+  - pochette ou icône de catégorie, titre, artiste ;
+  - barre de progression cliquable ;
+  - lecture/pause, précédent (qui revient au début du morceau après 3 s), suivant ;
+  - aléatoire, et répétition de la liste, du morceau ou aucune ;
+  - enchaînement automatique des morceaux.
+- **Vitesse de lecture** de 0,5× à 2× : curseur, raccourcis 0,75× / 1× / 1,25× / 1,5×, double-clic pour revenir à 1×. Option **« Conserver la tonalité »**, activée par défaut : la musique va plus vite sans devenir aiguë.
+- **Volume :** curseur avec une courbe adaptée à l'oreille, et bouton muet.
+- **Réglages retenus :** volume, vitesse et tonalité sont gardés dans le navigateur.
+- **Liste des morceaux :** recherche, catégories (mêmes pilules colorées que le Mixage), pagination. Le morceau en cours est mis en évidence par un petit égaliseur animé. La liste affichée devient la file d'attente.
+- **Butterchurn** branché sur le son du lecteur, **avant le volume** : les visuels suivent le rythme même à faible volume. Choix du preset, aléatoire, changement automatique toutes les 30 s, cadre ou fond d'écran, plein écran.
+- **Raccourcis clavier :** Espace (lecture/pause), ← → (reculer ou avancer de 5 s).
+- **Déconnexion :** le lecteur s'arrête.
+
+### Choix techniques (expliqués simplement)
+
+- **Service partagé (`AudioPlayerService`)** : le lecteur ne dépend pas de la page. C'est ce qui permet à la musique de continuer quand on change d'onglet.
+- **Chaîne audio :** balise `<audio>` → analyse par Butterchurn → volume → haut-parleurs. La vitesse utilise `playbackRate` et la tonalité `preservesPitch`, deux réglages fournis par le navigateur.
+- **Visualiseur existant réutilisé :** il accepte maintenant une autre source sonore et un mode « cadre ». Le comportement du Mixage reste le même.
+- **Préchargement discret des visuels** pendant que le navigateur est inactif, pour que le bouton « Activer les visuels » réagisse tout de suite.
+
+### Problèmes rencontrés et corrections
+
+| Problème | Correction |
+|---|---|
+| Erreur de compilation : la référence de gabarit `#page` portait le même nom que le signal `page()` (numéro de page). | Référence renommée `#audioPage`. |
+| Les tests du lecteur passaient, mais avec 4 erreurs « non gérées » : l'environnement de test (jsdom) ne sait pas créer d'URL temporaire pour un fichier. | Cette fonction est simulée dans le test, qui est maintenant propre. |
+| Dans le Chrome de test, **les visuels mettaient 30 à 46 s à démarrer** avec de la musique (4,5 à 5,5 s sans). Deux pistes ont été examinées puis écartées : le moteur audio qui ne redémarrait pas, puis la lenteur du mode développement (même délai en production). Le profileur a montré que le temps passait dans le dessin des images, parce que ce Chrome de test n'utilise **pas de carte graphique** (rendu logiciel SwiftShader). | Mesure refaite **avec la carte graphique réelle (Intel Iris Xe)** : **0,6 à 1,1 s**. Ce n'était donc pas un défaut de l'application. Le préchargement des visuels a été ajouté au passage. La modification de la première piste (ne plus attendre la reprise du moteur audio) a été conservée, car elle est sans risque. |
+| **En mode fond d'écran, l'animation restait enfermée dans le panneau du lecteur** (690×536 au lieu de toute la fenêtre). Le flou d'arrière-plan (`backdrop-filter`) des panneaux faisait du panneau le référentiel du canvas en position fixe, le même mécanisme que le `transform` corrigé à la demande 5. | Flou retiré des panneaux de l'onglet Audio, remplacé par un fond plus opaque. Le canvas couvre maintenant toute la fenêtre (1367×904). |
+| Le mini-lecteur prenait trop de place et faisait passer « Backing tracks » sur deux lignes. | Mini-lecteur compacté. Sur une fenêtre de largeur moyenne, seuls l'icône et les boutons restent, et le titre complet apparaît au survol. **Cette version compacte n'a pas été re-capturée.** |
+
+### Vérifications
+
+- **Tests automatiques :** 30 tests sur 30 réussis, dont 7 nouveaux pour le lecteur :
+  - vitesse bornée entre 0,5× et 2× et retenue ;
+  - volume et mode muet ;
+  - modes de répétition ;
+  - enchaînement des morceaux et arrêt en fin de liste ;
+  - « précédent » après 3 s ;
+  - arrêt à la déconnexion.
+- **Build :** `npm run build` réussit.
+- **Navigateur** (Chrome, son coupé, version de production et carte graphique réelle) :
+  - lien « Audio » dans la navigation ;
+  - lecture d'un morceau Hip-Hop ; titre et catégorie transmis aux touches multimédia ;
+  - **vitesse : à 1,5×, 6 s de musique en 4 s réelles ; à 1×, 4 s en 4 s** ;
+  - volume réglé à 30 %, bouton muet fonctionnel ;
+  - visuels prêts en 0,6 s ; en cadre, le canvas fait exactement la taille du cadre (658×370) ; en fond d'écran, il couvre toute la fenêtre et les panneaux deviennent translucides ;
+  - **arrière-plan :** sur l'onglet Backing tracks, la musique continue (5 s de musique pour 4,3 s réelles, en comptant le petit temps de chargement de la page) ; le mini-lecteur affiche le titre ; sa touche pause fonctionne ; le retour à l'onglet Audio conserve le morceau, la position et les réglages ;
+  - aucune erreur console.
+- **Captures :** `captures/audio_visuels_cadre.png`, `captures/audio_visuels_fond_ecran.png`, `captures/audio_mini_lecteur.png` (cette dernière avant le compactage du mini-lecteur).
+
+### Fichiers
+
+- **Créés :**
+  - `shared/services/audio-player.service.ts` (+ `.spec.ts`) ;
+  - `components/audio-page/` (`.ts`, `.html`, `.css`) ;
+  - `components/mini-player/mini-player.ts`.
+- **Modifiés :**
+  - `components/dj-visualizer/` (source sonore configurable, mode cadre ou fond d'écran, préchargement) ;
+  - `shared/icons/icons.ts` (12 icônes du lecteur) ;
+  - `routes.ts` (route `/audio`) ;
+  - `components/app/` (`.ts`, `.html` : lien « Audio » et mini-lecteur).
+- **Non modifiés :** le backend.
+
+**Limites :**
+- Si on lance aussi un mix dans l'onglet Mixage, les deux sons se superposent : le lecteur et la table de mixage sont indépendants.
+- La file d'attente se limite à la page de morceaux affichée (10 morceaux).
+
+**État :** terminé.
+
+## Demande 16 — Erreur de connexion au login (en cours)
+
+> « Pourquoi j'ai une erreur de connexion lors du login ? »
+
+### Diagnostic
+
+1. **Frontend Angular** (port 4200) : en marche (HTTP 200).
+2. **Backend** (port 3000) : **injoignable**. Aucun processus n'écoutait sur ce port : le serveur n'était plus lancé (terminal fermé, ordinateur redémarré ou arrêt du processus).
+3. **Conséquence :** la page de connexion envoie `POST /api/auth/login` au serveur Angular, qui la transmet (proxy) au backend. Comme le backend était absent, le proxy a répondu **HTTP 502**, et la page affiche alors son message générique « Erreur de connexion ». Les identifiants n'étaient pas en cause.
+
+### Correction
+
+- Backend relancé avec `npm start` dans le dossier `backend/`.
+- Journal de démarrage :
+  - connexion à MongoDB Atlas réussie ;
+  - base `guitar-practice-cloud` prête ;
+  - compte de démonstration présent.
+- Vérifications : `GET /api/health` → `{"status":"ok"}`, puis `POST /api/auth/login` via l'application → **HTTP 200**.
+
+### À retenir
+
+- Pour que l'application fonctionne, **deux serveurs** doivent tourner :
+  - `cd backend && npm start` (API, port 3000) ;
+  - `cd frontend-starter && npm start` (Angular, port 4200).
+- Si le login affiche « Erreur de connexion » alors que le mot de passe est bon, vérifier d'abord que le backend tourne : `http://localhost:3000/api/health` doit répondre `{"status":"ok"}`.
+- Le backend relancé ici tourne dans la session de l'assistant IA. Si cette session se ferme, il faut le relancer soi-même avec la commande ci-dessus.
+
+**Amélioration possible (non faite, à valider) :** la page de connexion affiche le même message générique quel que soit le problème. Elle pourrait distinguer « serveur injoignable » (HTTP 0 ou 502) de « identifiants incorrects » (HTTP 401).
+
+**Fichiers modifiés :** aucun, à part ce rapport.
 
 **État :** terminé.

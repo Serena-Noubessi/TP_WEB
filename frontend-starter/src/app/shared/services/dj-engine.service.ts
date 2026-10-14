@@ -12,6 +12,7 @@ import { OnlineTrackService } from './online-track.service';
 import { TrackService } from './track.service';
 
 const SYNC_INTERVAL_MS = 250;
+const AUTOPLAY_KEY = 'gpc_dj_autoplay';
 
 /**
  * Moteur de la table de mixage, partagé par toute l'application.
@@ -31,6 +32,8 @@ export class DjEngineService {
   readonly syncMessage = signal('');
   readonly recording = signal(false);
   readonly recordingUrl = signal('');
+  /** Lecture lancée automatiquement dès qu'un morceau est prêt sur une platine (activée par défaut). */
+  readonly autoPlay = signal(this.readAutoPlay());
 
   private ctx?: AudioContext;
   private ready?: Promise<AudioContext>;
@@ -107,6 +110,23 @@ export class DjEngineService {
         );
       },
     });
+  }
+
+  setAutoPlay(enabled: boolean): void {
+    this.autoPlay.set(enabled);
+    try {
+      localStorage.setItem(AUTOPLAY_KEY, enabled ? 'on' : 'off');
+    } catch (error) {
+      console.warn('[DjEngine] Préférence de lecture automatique non enregistrée', error);
+    }
+  }
+
+  private readAutoPlay(): boolean {
+    try {
+      return localStorage.getItem(AUTOPLAY_KEY) !== 'off';
+    } catch {
+      return true;
+    }
   }
 
   togglePlay(id: DeckId): void {
@@ -269,6 +289,9 @@ export class DjEngineService {
       const ctx = await audioReady;
       const buffer = await ctx.decodeAudioData(await blob.arrayBuffer());
       deck.setBuffer(token, buffer);
+      // Lecture automatique : le morceau démarre dès qu'il est décodé, sans attendre
+      // l'analyse du tempo (qui se poursuit en arrière-plan).
+      if (this.autoPlay() && deck.isCurrentLoad(token)) deck.play();
       if (!deck.isCurrentLoad(token)) return;
 
       // Analyse en arrière-plan : la platine est déjà jouable pendant ce calcul.

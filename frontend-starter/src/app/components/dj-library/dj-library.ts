@@ -8,10 +8,12 @@ import { OnlineTrackService } from '../../shared/services/online-track.service';
 import { CategoryStatsService } from '../../shared/services/category-stats.service';
 import { CATEGORIES, categoryOf, categorySearch, displayTitle, findCategory, MusicCategory } from '../../shared/models/category.model';
 import { TrackService } from '../../shared/services/track.service';
+import { IconComponent } from '../icon/icon';
 
 /** Bibliothèque de la table de mixage : les pistes de l'utilisateur, à charger sur une platine. */
 @Component({
   selector: 'app-dj-library',
+  imports: [IconComponent],
   templateUrl: './dj-library.html',
   styleUrl: './dj-library.css',
 })

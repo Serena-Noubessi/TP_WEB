@@ -12,9 +12,9 @@
       <label>Titre<input [formControl]="title" [disabled]="uploading()" /></label>
       <label>Catégorie
         <select [formControl]="uploadCategory">
-          <option value="">📁 Non classé</option>
+          <option value="">Non classé</option>
           @for (category of categories; track category.id) {
-            <option [value]="category.id">{{ category.icon }} {{ category.label }}</option>
+            <option [value]="category.id">{{ category.label }}</option>
           }
         </select>
       </label>
@@ -57,13 +57,13 @@
       </div>
       <nav class="crates" aria-label="Catégories">
         <button type="button" class="crate" [class.is-active]="categoryFilter() === ''" [attr.aria-pressed]="categoryFilter() === ''" (click)="selectCategory('')" style="--crate-color: #1d755e">
-          <span class="crate-icon" aria-hidden="true">🎶</span>
+          <span class="crate-icon" aria-hidden="true"><app-icon name="library" /></span>
           <span class="crate-label">Tous</span>
           <span class="crate-count">{{ totalCount() ?? '…' }}</span>
         </button>
         @for (category of categories; track category.id) {
           <button type="button" class="crate" [class.is-active]="categoryFilter() === category.id" [attr.aria-pressed]="categoryFilter() === category.id" (click)="selectCategory(category.id)" [style.--crate-color]="category.color">
-            <span class="crate-icon" aria-hidden="true">{{ category.icon }}</span>
+            <span class="crate-icon" aria-hidden="true"><app-icon [name]="category.icon" /></span>
             <span class="crate-label">{{ category.label }}</span>
             <span class="crate-count">{{ categoryCount(category) ?? '…' }}</span>
           </button>
@@ -95,14 +95,14 @@
                 } @else if (track.coverUrl) {
                   <div class="cover-placeholder" role="status">Chargement…</div>
                 } @else {
-                  <div class="cover-placeholder" aria-label="Aucune image de couverture">{{ category.icon }}</div>
+                  <div class="cover-placeholder" role="img" aria-label="Aucune image de couverture"><app-icon [name]="category.icon" size="2.6rem" [strokeWidth]="1.5" /></div>
                 }
               </div>
               <div class="track-content">
                 <div class="track-heading">
                   <h3>{{ displayTitle(track) }}</h3>
                   <span class="track-badges">
-                    <span class="category-badge">{{ category.icon }} {{ category.label }}</span>
+                    <span class="category-badge"><app-icon [name]="category.icon" /> {{ category.label }}</span>
                     @if (track.online) {
                       <span class="track-format">En ligne</span>
                     }
@@ -163,7 +163,7 @@
                 <div class="track-footer">
                   <div class="track-actions">
                     <button type="button" (click)="play(track)" [attr.aria-label]="'Lire ' + displayTitle(track)" [disabled]="audioLoadingTrackId() === track.id">
-                      <span aria-hidden="true">▶</span>
+                      <app-icon name="play" />
                       <span>{{ audioLoadingTrackId() === track.id ? 'Chargement…' : 'Lire' }}</span>
                     </button>
                     <button type="button" class="delete-button" (click)="deleteTrack(track)" [disabled]="deletingTrackId() === track.id" [attr.aria-label]="'Supprimer ' + displayTitle(track)">

@@ -10,11 +10,11 @@
 
   <div class="crate-bar" role="toolbar" aria-label="Bacs par catégorie">
     <button type="button" class="crate-pill" [class.is-active]="categoryFilter() === ''" [attr.aria-pressed]="categoryFilter() === ''" (click)="selectCategory('')" style="--cat: #e4e8f0">
-      🎶 Tous
+      <app-icon name="library" /> Tous
     </button>
     @for (category of categories; track category.id) {
       <button type="button" class="crate-pill" [class.is-active]="categoryFilter() === category.id" [attr.aria-pressed]="categoryFilter() === category.id" (click)="selectCategory(category.id)" [style.--cat]="category.color">
-        {{ category.icon }} {{ category.label }}
+        <app-icon [name]="category.icon" /> {{ category.label }}
         <span class="pill-count">{{ categoryCount(category) ?? '…' }}</span>
       </button>
     }
@@ -31,7 +31,7 @@
     @for (track of displayed(); track track.id) {
       @let category = categoryOf(track);
       <li draggable="true" (dragstart)="dragStart($event, track)" title="Glisser sur une platine" [style.--cat]="category.color">
-        <span class="cat-icon" [title]="category.label" aria-hidden="true">{{ category.icon }}</span>
+        <span class="cat-icon" [title]="category.label" aria-hidden="true"><app-icon [name]="category.icon" /></span>
         <span class="track-name">
           <strong>{{ displayTitle(track) }}</strong>
           @if (track.online; as online) {

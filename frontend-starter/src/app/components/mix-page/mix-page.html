@@ -5,6 +5,18 @@
       <h1>Mixage DJ</h1>
       <p class="mix-intro">Chargez vos morceaux sur les platines, calez les tempos et mixez.</p>
     </div>
+    <button
+      type="button"
+      class="autoplay"
+      role="switch"
+      [attr.aria-checked]="engine.autoPlay()"
+      [class.is-on]="engine.autoPlay()"
+      (click)="engine.setAutoPlay(!engine.autoPlay())"
+      title="Quand c'est activé, un morceau démarre tout seul dès qu'il est chargé sur une platine"
+    >
+      <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+      Lecture automatique au chargement
+    </button>
     <dl class="shortcuts" aria-label="Raccourcis clavier">
       <div><dt>Q / P</dt><dd>Lecture A / B</dd></div>
       <div><dt>W / O</dt><dd>Cue A / B</dd></div>

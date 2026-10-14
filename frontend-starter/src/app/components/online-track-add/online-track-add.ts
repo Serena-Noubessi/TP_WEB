@@ -8,6 +8,7 @@ import { CATEGORIES } from '../../shared/models/category.model';
 import { CatalogKeysService } from '../../shared/services/catalog-keys.service';
 import { CatalogService } from '../../shared/services/catalog.service';
 import { OnlineTrackService } from '../../shared/services/online-track.service';
+import { IconComponent } from '../icon/icon';
 
 /** En dessous de ce débit après quelques secondes, l'utilisateur est prévenu que la connexion est lente. */
 const SLOW_BYTES_PER_SECOND = 64 * 1024;
@@ -27,7 +28,7 @@ export const LICENSE_CHOICES = [
 /** Ajout de morceaux depuis internet : lien direct vers un fichier ou recherche dans un catalogue libre. */
 @Component({
   selector: 'app-online-track-add',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, IconComponent],
   templateUrl: './online-track-add.html',
   styleUrl: './online-track-add.css',
 })

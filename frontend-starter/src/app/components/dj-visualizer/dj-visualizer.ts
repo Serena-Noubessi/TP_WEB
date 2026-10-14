@@ -1,7 +1,10 @@
-import { Component, DestroyRef, ElementRef, inject, input, signal, viewChild } from '@angular/core';
+import { afterNextRender, Component, DestroyRef, ElementRef, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import type { ButterchurnVisualizer } from 'butterchurn';
 import { DjEngineService } from '../../shared/services/dj-engine.service';
+
+/** Fournit le contexte audio et le nœud dont Butterchurn analyse le son. */
+export type VisualizerAudioSource = () => Promise<{ context: AudioContext; output: AudioNode }>;
 
 const BLEND_SECONDS = 2.5;
 const AUTO_CHANGE_MS = 30000;
@@ -30,6 +33,12 @@ export class DjVisualizerComponent {
 
   /** Conteneur mis en plein écran : la console entière, pour garder les platines par-dessus le fond. */
   readonly fullscreenTarget = input.required<HTMLElement>();
+  /** Source du son analysé ; par défaut la sortie master de la table de mixage. */
+  readonly audioSource = input<VisualizerAudioSource | null>(null);
+  /** Si vrai, les visuels peuvent s'afficher dans un cadre ou passer en fond d'écran (onglet Audio). */
+  readonly framedOption = input(false);
+  /** Fond d'écran (canvas fixé sous l'interface) ou cadre ; le Mixage est toujours en fond d'écran. */
+  readonly background = linkedSignal(() => !this.framedOption());
 
   readonly enabled = signal(false);
   readonly starting = signal(false);
@@ -47,10 +56,24 @@ export class DjVisualizerComponent {
   private shell?: HTMLElement;
 
   constructor() {
+    // Préchargement discret des bibliothèques (les presets sont volumineux) pendant que
+    // le navigateur est inactif : le clic sur « Activer » est ensuite presque immédiat.
+    afterNextRender(() => {
+      const preload = () => void Promise.all([import('butterchurn'), import('butterchurn-presets')]).catch(() => undefined);
+      if ('requestIdleCallback' in window) requestIdleCallback(preload, { timeout: 3000 });
+      else setTimeout(preload, 1500);
+    });
     inject(DestroyRef).onDestroy(() => {
       if (this.document.fullscreenElement === this.fullscreenTarget()) void this.document.exitFullscreen();
       this.stop();
     });
+  }
+
+  /** Bascule entre le cadre et le fond d'écran, puis recalcule la taille du rendu. */
+  toggleBackground(): void {
+    this.background.update((value) => !value);
+    this.setShellTransparent(this.enabled() && this.background());
+    requestAnimationFrame(() => this.resize());
   }
 
   async toggle(): Promise<void> {
@@ -130,7 +153,7 @@ export class DjVisualizerComponent {
     this.starting.set(true);
     try {
       const [{ context, output }, butterchurnModule, presetsModule] = await Promise.all([
-        this.engine.masterSource(),
+        (this.audioSource() ?? (() => this.engine.masterSource()))(),
         import('butterchurn'),
         import('butterchurn-presets'),
       ]);
@@ -145,7 +168,7 @@ export class DjVisualizerComponent {
       this.presetNames.set(Object.keys(this.presets).sort((a, b) => a.localeCompare(b)));
 
       this.enabled.set(true);
-      this.setShellTransparent(true);
+      this.setShellTransparent(this.background());
       const canvas = this.canvas().nativeElement;
       this.resize();
       this.visualizer = butterchurn.createVisualizer(context, canvas, {
@@ -154,7 +177,7 @@ export class DjVisualizerComponent {
         pixelRatio: 1,
         textureRatio: 1,
       });
-      // Sortie finale du moteur : après crossfader, volume master et limiteur.
+      // Mixage : sortie finale du moteur (après crossfader, master et limiteur). Audio : le lecteur.
       this.visualizer.connectAudio(output);
       this.source = output;
       this.randomPreset(0);

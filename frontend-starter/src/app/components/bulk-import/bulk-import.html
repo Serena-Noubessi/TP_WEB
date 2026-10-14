@@ -4,11 +4,11 @@
 
   <div class="pickers">
     <label class="picker">
-      <span>📂 Choisir un dossier</span>
+      <span><app-icon name="folder-open" size="1.3rem" /> Choisir un dossier</span>
       <input type="file" webkitdirectory multiple (change)="choose($event)" [disabled]="running() || analysing()" />
     </label>
     <label class="picker">
-      <span>🎵 Choisir des fichiers</span>
+      <span><app-icon name="file-audio" size="1.3rem" /> Choisir des fichiers</span>
       <input type="file" accept="audio/*" multiple (change)="choose($event)" [disabled]="running() || analysing()" />
     </label>
   </div>
@@ -25,15 +25,15 @@
       <ul class="group-chips" aria-label="Répartition par catégorie">
         @for (group of groups(); track group.category?.id ?? 'aucune') {
           <li [style.--chip-color]="group.category?.color ?? '#b8c4bf'">
-            {{ group.category?.icon ?? '📁' }} {{ group.category?.label ?? 'Non classé' }} <b>{{ group.count }}</b>
+            <app-icon [name]="group.category?.icon ?? 'folder'" /> {{ group.category?.label ?? 'Non classé' }} <b>{{ group.count }}</b>
           </li>
         }
       </ul>
       @if (unrecognised()) {
-        <label class="fallback">{{ unrecognised() }} morceau(x) sans catégorie reconnue → ranger dans
+        <label class="fallback">{{ unrecognised() }} morceau(x) sans catégorie reconnue, à ranger dans
           <select [value]="fallbackCategory()" (change)="setFallback($event)" [disabled]="running()">
             @for (category of categories; track category.id) {
-              <option [value]="category.id" [selected]="category.id === fallbackCategory()">{{ category.icon }} {{ category.label }}</option>
+              <option [value]="category.id" [selected]="category.id === fallbackCategory()">{{ category.label }}</option>
             }
           </select>
         </label>
@@ -63,14 +63,14 @@
           @for (item of items(); track item.file.name + $index) {
             <li [class]="'status-' + item.status">
               <span class="file-title">{{ item.title }}</span>
-              <span class="file-category">{{ categoryLabel(item) }}</span>
+              <span class="file-category"><app-icon [name]="categoryIcon(item)" /> {{ categoryLabel(item) }}</span>
               <span class="file-status">
                 @switch (item.status) {
                   @case ('waiting') { en attente }
                   @case ('sending') { envoi… }
-                  @case ('done') { ✓ importé }
+                  @case ('done') { <app-icon name="check" /> importé }
                   @case ('skipped') { déjà présent }
-                  @case ('error') { ✗ {{ item.message }} }
+                  @case ('error') { <app-icon name="close" /> {{ item.message }} }
                 }
               </span>
             </li>
