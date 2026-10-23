@@ -12,7 +12,7 @@
   width: 100%;
   min-width: 0;
   border-radius: 8px;
-  background: #0b0d11;
+  background: var(--mv-inset);
 }
 
 :host canvas.zoom { height: 5.5rem; }
@@ -27,6 +27,6 @@
   top: 0.4rem;
   left: 0.6rem;
   margin: 0;
-  color: #ffd60a;
+  color: var(--mv-warning);
   font-size: 0.75rem;
 }

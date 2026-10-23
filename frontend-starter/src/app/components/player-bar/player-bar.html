@@ -1,0 +1,59 @@
+@if (track(); as current) {
+  @let category = categoryOf(current);
+  <section class="player-bar" aria-label="Lecteur audio">
+    <a class="now" routerLink="/audio" [title]="'Ouvrir le lecteur complet : ' + displayTitle(current)">
+      <span class="cover" [style.--cat]="category.color">
+        @if (current.online?.imageUrl; as image) {
+          <img [src]="image" alt="" />
+        } @else if (current.coverUrl && current.visibility === 'public') {
+          <img [src]="current.coverUrl" alt="" />
+        } @else {
+          <app-icon [name]="category.icon" size="1.4rem" />
+        }
+      </span>
+      <span class="now-text">
+        <strong>{{ displayTitle(current) }}</strong>
+        <small>{{ current.author?.name ?? current.online?.artist ?? category.label }}</small>
+      </span>
+    </a>
+
+    <div class="center">
+      <div class="controls">
+        <button type="button" class="icon-btn" (click)="player.previous()" aria-label="Morceau précédent"><app-icon name="skip-back" /></button>
+        <button type="button" class="play-btn" (click)="player.togglePlay()" [attr.aria-label]="player.playing() ? 'Pause' : 'Lecture'">
+          <app-icon [name]="player.playing() ? 'pause' : 'play'" size="1.25rem" />
+        </button>
+        <button type="button" class="icon-btn" (click)="player.next()" aria-label="Morceau suivant"><app-icon name="skip-forward" /></button>
+      </div>
+      <div class="timeline">
+        <span>{{ formatTime(player.time()) }}</span>
+        <label class="range">
+          <span class="sr-only">Position dans le morceau</span>
+          <input type="range" min="0" max="100" step="0.1" [value]="progress()" (input)="seek($event)" [attr.aria-valuetext]="formatTime(player.time())" />
+        </label>
+        <span>{{ formatTime(player.duration()) }}</span>
+      </div>
+    </div>
+
+    @if (!current.online) {
+      <app-reaction-buttons class="reactions" [track]="current" [compact]="true" />
+    }
+
+    <div class="volume">
+      <button type="button" class="icon-btn" (click)="player.toggleMute()" [attr.aria-label]="player.muted() ? 'Rétablir le son' : 'Couper le son'">
+        <app-icon [name]="player.muted() || player.volume() === 0 ? 'volume-off' : 'volume'" />
+      </button>
+      <label class="range">
+        <span class="sr-only">Volume</span>
+        <input type="range" min="0" max="1" step="0.01" [value]="player.volume()" (input)="changeVolume($event)" />
+      </label>
+    </div>
+
+    @if (player.loading()) {
+      <span class="status" role="status">Chargement…</span>
+    }
+    @if (player.error()) {
+      <span class="status error" role="alert">{{ player.error() }}</span>
+    }
+  </section>
+}

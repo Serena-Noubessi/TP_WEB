@@ -1,39 +1,40 @@
 import { describe, expect, it } from 'vitest';
 import { readAudioTags } from '../audio/id3-reader';
-import { categoryOf, categorySearch, displayTitle, findCategory, guessCategory, titleWithCategory } from './category.model';
+import { CATEGORIES, categoryOf, displayTitle, findCategory, guessCategory } from './category.model';
 import { Track } from './track.model';
 
-const track = (title: string, online?: Track['online']): Track => ({
-  id: '1', title, originalName: 'a.mp3', mimeType: 'audio/mpeg', size: 1, createdAt: '', online,
+const track = (fields: Partial<Track>): Track => ({
+  id: '1', title: 'x', originalName: 'a.mp3', mimeType: 'audio/mpeg', size: 1, createdAt: '', ...fields,
 });
 
-describe('catégories', () => {
-  it('reconnaît la catégorie d’un dossier du générateur ou d’un genre ID3', () => {
-    expect(guessCategory('01-house')?.id).toBe('house');
-    expect(guessCategory('02-dance-house')?.id).toBe('dance-house');
+describe('styles MOST VIBE', () => {
+  it('propose exactement les 8 styles (les 7 de la mission + Dance), identiques au backend', () => {
+    expect(CATEGORIES.map((category) => category.id)).toEqual(['hip-hop', 'afro', 'electro', 'pop', 'jazz', 'rock', 'dance', 'autres']);
+  });
+
+  it('regroupe les anciens genres selon la décision du 14/10/2026', () => {
+    expect(guessCategory('01-house')?.id).toBe('electro');
+    expect(guessCategory('02-dance-house')?.id).toBe('dance');
+    expect(guessCategory('Eurodance')?.id).toBe('dance');
+    expect(guessCategory('Techno')?.id).toBe('electro');
+    expect(guessCategory('dubstep')?.id).toBe('electro');
     expect(guessCategory('05-hip-hop')?.id).toBe('hip-hop');
-    expect(guessCategory('Autre / Trance')?.id).toBe('autre');
-    expect(guessCategory('dance house mix')?.id).toBe('dance-house');
-    expect(guessCategory('Jazz')).toBeUndefined();
+    expect(guessCategory('Autre / Trance')?.id).toBe('autres');
+    expect(guessCategory('Afro House')?.id).toBe('afro');
+    expect(guessCategory('Classique')).toBeUndefined();
   });
 
-  it('écrit la catégorie en tête du titre et la retire à l’affichage', () => {
-    const title = titleWithCategory('Stellar Rooftop', findCategory('house'));
-    expect(title).toBe('[House] Stellar Rooftop');
-    expect(displayTitle(track(title))).toBe('Stellar Rooftop');
-    expect(categoryOf(track(title)).id).toBe('house');
-    expect(titleWithCategory('[House] Stellar Rooftop', findCategory('techno'))).toBe('[Techno] Stellar Rooftop');
+  it('lit le style dans le champ style, sinon dans la fiche en ligne (anciens identifiants convertis)', () => {
+    expect(categoryOf(track({ style: 'jazz' })).id).toBe('jazz');
+    expect(categoryOf(track({ style: 'inconnu' })).id).toBe('autres');
+    expect(categoryOf(track({ online: { category: 'dance-house' } as Track['online'] })).id).toBe('dance');
+    expect(categoryOf(track({})).id).toBe('autres');
+    expect(findCategory('rock')?.label).toBe('Rock');
   });
 
-  it('ne confond pas House et Dance House dans la recherche du backend', () => {
-    const house = findCategory('house');
-    expect(house && categorySearch(house)).toBe('[House]');
-    expect('[Dance House] Cosmic Avenue'.includes('[House]')).toBe(false);
-  });
-
-  it('classe un ancien morceau sans préfixe en « Non classé » et un morceau en ligne selon sa fiche', () => {
-    expect(categoryOf(track('song')).id).toBe('non-classe');
-    expect(categoryOf(track('x', { category: 'pop' } as Track['online'])).id).toBe('pop');
+  it('retire un éventuel ancien préfixe du titre à l’affichage', () => {
+    expect(displayTitle(track({ title: '[House] Stellar Rooftop' }))).toBe('Stellar Rooftop');
+    expect(displayTitle(track({ title: 'Stellar Rooftop' }))).toBe('Stellar Rooftop');
   });
 });
 

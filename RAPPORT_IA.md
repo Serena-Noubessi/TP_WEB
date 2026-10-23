@@ -28,6 +28,13 @@ Ce fichier trace **chaque demande** faite à l'assistant IA (Claude Code), **dan
 | 14 | 12/10/2026 | Remplacer les icônes et emojis par des icônes professionnelles | Fait : icônes vectorielles Lucide partout, plus aucun emoji | Non |
 | 15 | 12/10/2026 | Nouvel onglet Audio : écoute simple, Butterchurn qui suit le rythme, vitesse de lecture, volume, mode arrière-plan | Fait et testé (lecteur, vitesse, volume, visuels en cadre ou en fond d'écran, lecture en arrière-plan avec mini-lecteur) | Non |
 | 16 | 14/10/2026 | « Pourquoi j'ai une erreur de connexion lors du login ? » | Cause : le backend n'était plus démarré ; relancé, le login fonctionne de nouveau | Non |
+| 17 | 14/10/2026 | Mission « MOST VIBE » : transformer le projet en mini réseau social de partage audio (13 sections) | Étape 0 (branche, sauvegarde, migrations) et sections 1 à 3 terminées et testées ; **point avant les sections 4 et 5** | Oui (autorisé le 14/10/2026) |
+| 18 | 14/10/2026 | « 1 » : continuer la mission MOST VIBE avec les sections 4 et 5 | Étape 2 faite : bibliothèque, j'aime/favoris (action après connexion), playlists, « Amis choisis » avec retrait d'accès, morceaux en ligne en base ; tests 18/18 + 38/38 + 38/38 | Oui (mission MOST VIBE) |
+| 19 | 14/10/2026 | « pas de commit. c'est moi qui doit le faire, continue avec les sections 6 et 7 » (+ « tu as d'abord fait le commit? », « pourquoi interrupted ») | Étape 3 faite : amis, invitations, blocage, profils, fil d'activité, notifications, messagerie avec cartes musicales et « Partage interrompu » ; tests 24/24 + 42/42 + 51/51 ; aucun commit | Oui (mission MOST VIBE) |
+| 20 | 14/10/2026 | « oui » : continuer la mission MOST VIBE avec les sections 8, 9 et 10 | Étape 4 faite : brouillons de mixage repris, publication avec autorisation de remix et crédits figés, paramètres et suppression du compte, signalements et administration (contenus publics seulement) ; tests 32/32 + 46/46 + 49/49 (+ 51/51 de non-régression) ; aucun commit | Oui (mission MOST VIBE) |
+| 21 | 14/10/2026 | « l'onglet des piste depasse l'onglet qui permet d'importer les musiques essaie d'ajuster ça » | Corrigé : colonne d'import à largeur garantie, champs adaptés, empilement sous 1100 px ; vérifié de 1440 à 400 px | Non (mise en page) |
+| 22 | 15-16/10/2026 | « oui » : continuer la mission MOST VIBE avec les sections 11, 12 et 13 | Étape 5 faite : finitions vérifiées page par page, recette A/B/C rangée dans le projet (197 réussis, 0 échoué(s)), livrables et mise en ligne documentés (non mise en ligne) ; aucun commit | Oui (mission MOST VIBE) |
+| 23 | 16/10/2026 | « c'est quoi le probleme rencontré? » | Réponse : aucun défaut de l'application ; blocages des outils de test (lanceur, port de l'API de démo, API de démo restée allumée depuis la veille), corrigés ; recette finale 197/197 | Non (question) |
 
 ---
 
@@ -759,5 +766,674 @@ La demande pouvait vouloir dire deux choses. Les deux ont été faites :
 **Amélioration possible (non faite, à valider) :** la page de connexion affiche le même message générique quel que soit le problème. Elle pourrait distinguer « serveur injoignable » (HTTP 0 ou 502) de « identifiants incorrects » (HTTP 401).
 
 **Fichiers modifiés :** aucun, à part ce rapport.
+
+**État :** terminé.
+
+## Demande 17 — Mission « MOST VIBE » (14 octobre 2026, en cours)
+
+> Mission complète (résumé fidèle du texte fourni) : transformer le projet en **MOST VIBE**, un mini réseau social de partage de fichiers audio (musiques, mixages, remixes). Règles : analyser l'existant et présenter un plan avant toute modification ; garder ce qui fonctionne (mixage, lecture, sauvegarde, export) ; ne perdre aucune donnée, avec des migrations réversibles ; enregistrer toutes les données en base, pas seulement dans le navigateur ; vérifier les droits d'accès côté serveur, y compris pour les liens directs vers les fichiers. Sections :
+> 1. Identité visuelle : nom MOST VIBE, logo MV, couleurs `#007FFF`, `#A99BEF`, `#F5FAFF`, `#FFFFFF`, `#18324F`, suppression du bleu marine.
+> 2. Navigation verticale sur ordinateur, barre adaptée sur mobile, lecteur persistant.
+> 3. Accueil, découverte et recherche publics sans compte : styles, sections, recherche filtrée sur les contenus autorisés.
+> 4. Comptes et espace personnel ; action sociale reprise automatiquement après la connexion.
+> 5. Visibilité Privé, Amis choisis ou Public ; gestion et retrait des accès.
+> 6. Amis (invitations, blocage) et fil d'activité filtré.
+> 7. Messagerie entre amis, compteur de non-lus, carte musicale, « Partage interrompu ».
+> 8. Mixages en brouillon, remix soumis à autorisation, crédits en chaîne non modifiables.
+> 9. Paramètres (profil, confidentialité, notifications, bloqués, suppression du compte).
+> 10. Administration sans accès aux contenus privés.
+> 11. Playlists, notifications, signalements, états vides, de chargement et d'erreur.
+> 12. Tests avec 3 comptes A, B, C.
+> 13. Livrables : bilan, tests y compris les échecs, services à configurer, étapes de mise en ligne.
+>
+> Faire un point après chaque grande partie. « Et mets à jour le fichier RAPPORT_IA avec la date. »
+
+### Étape 1 — Analyse de l'existant (14/10/2026)
+
+| Élément | État constaté |
+|---|---|
+| **Technologies** | Frontend Angular 22 (signals, composants autonomes). Backend Node.js avec Express 5 et Mongoose 9, base MongoDB Atlas. |
+| **Authentification** | JWT (2 h) et bcrypt. Pas de rôles. |
+| **Base de données** | `users` : 1 compte (démo). `tracks` : 404 pistes, toutes au compte démo. |
+| **Stockage** | Disque local `backend/data/uploads` : 404 fichiers, 585 Mo. |
+| **Droits** | Piste privée à son propriétaire, vérifié par le serveur. Ni public, ni amis, ni partage. |
+| **API** | 10 routes (santé, auth, profil, pistes). |
+| **Données seulement dans le navigateur** | Catégorie (préfixe du titre), morceaux en ligne, BPM et repères. À passer en base. |
+| **Fonctions existantes à garder** | Lecteur Audio persistant, Butterchurn, table de mixage, import en lot, export d'un mix en `.webm`. |
+| **Tests** | 30 tests frontend, 4 tests backend. |
+
+### Décisions de l'étudiante (14/10/2026)
+
+1. **Le backend peut être modifié** pour cette mission. Cela remplace la règle « ne jamais modifier le backend », qui valait pour les demandes 1 à 16. Chaque route ajoutée ou changée sera documentée dans `API_CONTRACT.md`.
+2. **Styles regroupés :**
+   - House, Dance House, Techno, Dubstep → électro ;
+   - Hip-Hop → hip-hop ;
+   - Pop → pop ;
+   - Autre → autres ;
+   - les styles afro, jazz et rock sont ajoutés ;
+   - l'ancien style est conservé dans un champ à part, ce qui rend la migration réversible.
+3. **Tests automatiques** sur une **base séparée** du même cluster Atlas : les vraies données ne sont jamais touchées.
+
+### Plan validé
+
+0. Branche Git `most-vibe`, sauvegarde complète de la base, système de migrations réversibles.
+1. Sections 1 à 3 : identité visuelle, navigation, lecteur persistant, contenus publics, recherche.
+2. Sections 4 et 5 : comptes, espace personnel, likes et favoris, visibilité et accès.
+3. Sections 6 et 7 : amis, fil d'activité, messagerie.
+4. Sections 8 à 10 : mixages, remix et crédits, paramètres, administration.
+5. Sections 11 à 13 : notifications, signalements, tests A/B/C, livrables.
+
+Un point avec l'étudiante est prévu à la fin de chaque étape.
+
+### Précision de l'étudiante (14/10/2026)
+
+> « L'onglet Backing tracks, Mixage et le contenu doivent encore y être, on ajoute juste ce que je t'ai donné. »
+
+**Conséquence :** les onglets **Backing tracks**, **Audio** et **Mixage** restent, avec tout leur contenu. Les entrées de la mission (Accueil, Explorer, Ma bibliothèque, Amis, Messages, Paramètres) sont **ajoutées** au menu. Le « Studio de mixage » de la mission correspond à l'onglet Mixage existant.
+
+### Étape 0 — Sécurité (14/10/2026)
+
+- **Branche Git `most-vibe`** créée : `main` reste intacte. Rien n'a été commité, en attente de l'accord de l'étudiante.
+- **Sauvegarde complète de la base :** `npm run backup` (405 documents) dans `backend/backups/2026-10-14T13-16-50-747Z/`, dossier ignoré par Git. Restauration possible avec `npm run restore -- backups/<date> --oui`.
+- **Migrations réversibles :**
+  - `backend/src/migrations/` (une fonction `up` pour appliquer, une fonction `down` pour annuler) ;
+  - collection `migrations` pour ne jamais rejouer une migration deux fois ;
+  - commandes `npm run migrate`, `npm run migrate -- status` et `npm run migrate -- down`.
+- **Répétition générale sur une copie de la base** avant d'appliquer la migration à la vraie :
+  - appliquée, puis relancée sans effet ;
+  - annulée, avec une base **identique à l'original** ;
+  - la copie a ensuite été supprimée.
+
+### Étape 1 — Sections 1 à 3 (14/10/2026)
+
+**Base de données (migration 001, appliquée à la vraie base) :**
+- la catégorie cachée dans le titre devient un champ `style` (regroupement décidé) ;
+- ajout de `visibility` (privé par défaut), `tags`, `album`, `kind` et du rôle utilisateur ;
+- **vérification après migration :** 1 compte et 404 pistes, **0 fichier audio manquant**, les 404 titres d'origine conservés (annulation possible), toutes les pistes **privées** ;
+- styles : électro 250, hip-hop 50, pop 50, autres 54.
+
+**Backend :**
+- `constants.js` (styles, visibilités, rôles) ;
+- `access.js` : règle d'accès « propriétaire ou public », appliquée à chaque requête ;
+- `routes/public.js` : accueil, recherche, fiche d'une piste ;
+- authentification facultative pour les visiteurs ;
+- `PATCH /tracks/:id` (propriétaire seulement) ;
+- audio et pochettes protégés y compris en lien direct : **401** pour un visiteur, **403** pour un autre utilisateur, lecture partielle `Range` conservée ;
+- variable facultative `MONGODB_DB` pour lancer le backend sur une autre base (démonstration, tests) ;
+- toutes les routes sont documentées dans `API_CONTRACT.md`.
+
+**Frontend :**
+1. **Identité visuelle :**
+   - nom MOST VIBE, logo MV ;
+   - variables de thème `--mv-primary #007FFF`, `--mv-secondary #A99BEF`, `--mv-bg #F5FAFF`, `--mv-card #FFFFFF`, `--mv-text #18324F`, plus quelques nuances dérivées ;
+   - environ 380 couleurs codées en dur remplacées par ces variables dans tous les écrans : navigation, boutons, lecteur, table de mixage (platine A en azur, platine B en violet), onglet Audio ;
+   - plus de vert sombre ni de bleu marine ; le thème sombre utilise des gris neutres.
+2. **Navigation :**
+   - menu vertical (Accueil, Explorer, Ma bibliothèque, Backing tracks, Audio, Mixage, Amis, Messages, Paramètres), plus Mon profil, Déconnexion et thème ;
+   - sur mobile, barre du bas (Accueil, Explorer, Biblio, Mixage, Plus) ;
+   - **lecteur persistant** en bas de l'écran, qui remplace le mini-lecteur ;
+   - les onglets **Backing tracks, Audio et Mixage sont conservés avec tout leur contenu**, comme demandé.
+3. **Accueil et Explorer, accessibles sans compte :**
+   - styles avec le nombre de pistes publiques ;
+   - ajouts récents, sélection, mixages de la communauté, albums ;
+   - cartes avec pochette, titre, style et auteur ;
+   - recherche par titre, auteur, style, album et tag, avec filtres type et tri ;
+   - les filtres apparaissent dans l'adresse, ce qui permet de partager une recherche ;
+   - écrans vides avec une action proposée, messages d'erreur clairs, indicateurs de chargement.
+- Envoi d'une piste : choix du **style** et de la **visibilité** (Privé par défaut). « Amis choisis » est visible mais désactivé jusqu'à l'étape 2.
+- Écrans d'attente pour Ma bibliothèque, Amis, Messages et Paramètres : ils indiquent à quelle étape la fonction arrive et proposent une action utile.
+
+### Problèmes rencontrés pendant l'étape 1 et corrections
+
+| Problème | Correction |
+|---|---|
+| Un test backend existant vérifiait un détail de l'ancienne implémentation (la requête filtrait par propriétaire). | Le test vérifie maintenant le comportement attendu : propriétaire 200, autre utilisateur 403, visiteur 401, piste publique 200. |
+| **Le filtre par auteur ne trouvait jamais rien.** La bibliothèque de pagination (`mongoose-aggregate-paginate-v2`) déplace automatiquement les filtres `$match` au début du pipeline, donc avant la jointure qui ajoute le nom de l'auteur. | Option `useFacet: false` sur la recherche publique, avec un commentaire qui l'explique. Un test d'intégration le vérifie. |
+| Le test frontend des catégories vérifiait l'ancien préfixe dans le titre. | Réécrit pour les 7 styles et le regroupement décidé. |
+| Deux erreurs de typage TypeScript (données de route, somme des styles). | Corrigées. |
+| Le curseur du crossfader avait pris la couleur du texte au lieu du bleu de la charte. | Couleur principale appliquée. |
+
+### Vérifications de l'étape 1
+
+- **Backend :** 9 tests sur 9 réussis, dont 5 nouveaux tests d'intégration sur la base séparée `most-vibe-test` :
+  - la recherche ne renvoie jamais de piste privée, même pour son propriétaire ;
+  - recherche par titre, auteur, style, album et tag ;
+  - l'email de l'auteur n'est jamais exposé ;
+  - l'accueil ne contient que des contenus publics ;
+  - lien direct : public 200, privé 401 pour un visiteur, 403 pour un autre utilisateur, 200 pour le propriétaire ; `Range` → 206 ;
+  - seul le propriétaire modifie une piste, et une piste remise en privé disparaît aussitôt de la recherche.
+- **Frontend :** 32 tests sur 32, dont 6 nouveaux.
+- **Build :** `npm run build` réussit.
+- **Navigateur** (version de production, son coupé, base de démonstration séparée `most-vibe-demo` avec 3 comptes et 9 pistes, dont 2 privées) :
+  - **visiteur sans compte :** menu réduit à Accueil et Explorer ; variables de thème correctes ; aucune piste privée visible ; lecture d'une piste publique ; **le lecteur continue en changeant de page** ;
+  - **recherche :** « secrète » et « brouillon » (pistes privées) donnent 0 résultat ; style, auteur, album, tag et mixages renvoient les bons résultats ;
+  - **liens directs :** public 200 ; privé 401 pour un visiteur, 403 pour Bob, 200 pour Alice ;
+  - **Alice connectée :** menu complet ; formulaire d'envoi avec Privé par défaut ; badges Privé et Public ; Mixage, Audio et Ma bibliothèque s'affichent ;
+  - **aucune ancienne couleur à l'écran** (vérification automatique sur Accueil, Backing tracks, Mixage et Audio) ;
+  - **mobile (390 px) :** pas de menu vertical, barre du bas, menu « Plus », 0 px de débordement ;
+  - aucune erreur console.
+- **Captures :** `captures/most_vibe_etape1_*.png` (accueil, explorer, backing tracks, mixage, audio, mobile).
+
+### Limites et points en attente
+
+- **Les 404 pistes de l'étudiante sont toutes privées :** l'accueil réel affiche donc « Aucun contenu public pour le moment ». Pour en publier, il suffit de choisir « Public » à l'envoi. La modification de la visibilité d'une piste existante dans l'interface arrive à l'étape 2 (section 5) ; la route `PATCH` existe déjà.
+- **Base de démonstration `most-vibe-demo`** (3 comptes, mot de passe `MotDePasse123`) conservée pour revoir l'étape. Elle a ajouté 9 copies de morceaux `demo-*.mp3` dans `backend/data/uploads`. Les deux peuvent être supprimés sur demande.
+- **Les morceaux ajoutés depuis internet** (demande 11) sont encore gardés dans le navigateur. Leur passage en base est prévu à l'étape 2, conformément à la règle « toutes les données en base ».
+- **Rien n'a été commité :** les changements sont sur la branche `most-vibe`, en attente de validation.
+
+**État :** étape 1 (sections 1 à 3) terminée. **Point avec l'étudiante** avant de passer aux sections 4 et 5.
+
+## Demande 18 — MOST VIBE, étape 2 : sections 4 et 5 (14/10/2026)
+
+> « 1 » (réponse au point d'étape : « Je continue ? »)
+
+**Interprétation :** continuer avec les sections 4 (comptes et bibliothèque) et 5 (visibilité et partage). Les deux autres questions du point d'étape sont restées sans réponse, donc par prudence :
+- **aucun commit** n'est fait ;
+- **la base de démonstration est conservée**.
+
+**Plan de l'étape 2 :**
+- **Section 4 :**
+  - espace personnel « Ma bibliothèque » : profil, fichiers, albums, playlists, favoris, projets de mixage ;
+  - likes et favoris enregistrés en base ;
+  - un visiteur qui like ou met en favori est invité à se connecter, puis **l'action est exécutée automatiquement après la connexion** ;
+  - les morceaux ajoutés depuis internet passent du navigateur à la base (règle « toutes les données en base »).
+- **Section 5 :**
+  - visibilité Privé, Amis choisis ou Public, à l'envoi et à tout moment ;
+  - liste des personnes qui ont accès, retrait d'un accès ;
+  - message indiquant qu'un fichier déjà téléchargé ne peut pas être récupéré à distance ;
+  - droits vérifiés par le serveur à chaque requête.
+
+### Ce qui a été fait
+
+#### Backend (autorisé le 14/10/2026)
+
+| Élément | Détail |
+|---|---|
+| Nouveaux modèles | `Reaction` (j'aime / favori), `TrackAccess` (accès donnés à une personne, avec date de retrait), `Playlist`, `ExternalTrack` (morceaux en ligne) |
+| Règle d'accès | `access.js` → `canRead` : propriétaire, **ou** piste publique, **ou** accès actif. Appliquée à l'audio, à la pochette et à la fiche, **à chaque requête** |
+| Nouvelles routes | `routes/library.js` : j'aime / favoris, `/me/reactions`, `/me/favorites`, `/me/shared`, `/me/albums`, accès d'une piste (voir, donner, retirer), recherche de profils, playlists, morceaux en ligne |
+| Routes modifiées | `PATCH /tracks/:id` : repasser en Privé retire les accès « Amis choisis » ; `DELETE /tracks/:id` : efface aussi réactions, accès et entrées de playlist ; routes publiques : `likeCount` en plus |
+| Migration 002 | Crée les 4 collections et leurs index. **Annulation sans perte** : une collection non vide est renommée, jamais effacée |
+| Base réelle | Sauvegarde `backend/backups/2026-10-14T13-33-18-390Z` (406 documents), **puis** migration 002 appliquée |
+| Documentation | `API_CONTRACT.md` : section « MOST VIBE — étape 2 » (méthode, URL, auth, corps, réponses, erreurs de chaque route) |
+| Sécurité | La recherche de profils ne renvoie que le nom, jamais l'email ; seule la propriétaire gère les accès (sinon 404, sans révéler que la piste existe) |
+
+#### Frontend
+
+| Élément | Détail |
+|---|---|
+| Ma bibliothèque (`/library`) | Onglets : Mes fichiers (avec visibilité), Albums, Playlists, Favoris, Partagés avec moi, Projets de mixage (étape 4), Profil. Chaque onglet a un état de chargement, un message d'erreur avec « Réessayer » et un état vide utile |
+| J'aime, favori, playlist | Boutons sur chaque tuile et dans le lecteur persistant ; ajout à une playlist (ou création) depuis un petit menu |
+| Visiteur | Un clic sur J'aime ou Favori mène à la connexion avec le bandeau « Connectez-vous pour aimer « … » » ; **l'action est faite automatiquement** juste après, puis retour à la page d'origine avec le message « C'est fait » |
+| Visibilité et partage | Fenêtre : Privé / Amis choisis / Public, recherche d'une personne par son nom, liste de qui a accès, retrait avec confirmation, puis message « un fichier déjà téléchargé ne peut pas être récupéré à distance » |
+| Envoi | Option « Amis choisis » activée ; après l'envoi, la fenêtre de partage s'ouvre pour choisir les personnes |
+| Morceaux en ligne | Enregistrés **en base** (plus dans le navigateur). L'ancienne liste du navigateur est envoyée **une seule fois** au serveur, puis effacée du navigateur seulement si le serveur l'a acceptée |
+| Pochettes privées | Nouveau composant qui les charge avec le jeton de connexion (une simple image ne l'envoie pas) |
+| Connexion | Une page protégée ouverte sans être connecté renvoie vers cette même page après la connexion |
+
+**Onglets existants conservés :** Backing tracks, Audio et Mixage gardent tout leur contenu. Backing tracks reçoit seulement un bouton « Partager ».
+
+### Tests
+
+| Tests | Résultat |
+|---|---|
+| Backend `npm test` (dont 9 nouveaux tests d'intégration avec les comptes A, B et C sur la base séparée `most-vibe-test-library`) | **18/18** |
+| Frontend `npm test` (dont 6 nouveaux) | **38/38** |
+| Build de production | OK, sans avertissement Angular |
+| Test navigateur (Chrome sans fenêtre et **muet**, base de démonstration) | **38/38** : action après connexion, favoris, playlists, partage puis retrait (Bob 200 → 403, Chloé 403, visiteur 401), « Partagés avec moi », envoi « Amis choisis », reprise des morceaux en ligne, mobile 400 px sans débordement, aucune erreur JavaScript |
+
+Captures : `captures/most_vibe_etape2_*.png` (10 images).
+
+### Défauts trouvés pendant les tests, et corrections
+
+| Ce qui n'allait pas | Ce qui a été changé |
+|---|---|
+| **Migration 001 :** rejouée sur la base de démonstration (créée après MOST VIBE), elle a remplacé le style des 9 pistes de démo par « autres ». Elle déduisait toujours le style du préfixe du titre, même si un style existait déjà. La vraie base n'était pas concernée (ses pistes n'avaient pas encore de style) | La migration garde maintenant un style déjà présent. Les 9 styles de démo ont été restaurés à partir du script de démonstration |
+| **Migration 002 :** première version refusée par MongoDB (« Index already exists with a different name »). J'avais donné aux index des noms personnalisés, alors que Mongoose les avait déjà créés avec les noms par défaut | La migration utilise les noms par défaut de MongoDB, identiques à ceux de Mongoose |
+| **Bouton J'aime (test navigateur) :** juste après la connexion, le cœur pouvait rester vide alors que le « j'aime » était bien en base. Une relecture des réactions, partie pendant l'envoi du « j'aime », revenait avec l'ancien état et l'écrasait | Une relecture est ignorée si une action était en cours à son départ ou à son retour, ou si une action a commencé entretemps. Un test unitaire couvre ce cas |
+| **Fenêtre de partage :** la confirmation positive (« Bob peut maintenant écouter… ») avait l'icône et la couleur d'un avertissement | Coche et fond bleu clair pour une confirmation ; l'avertissement reste réservé aux retraits d'accès |
+| **Test de pochette existant** (`api.test.js`) : il ne simulait pas la nouvelle vérification des accès, et aurait attendu une base non connectée | Le test simule `TrackAccess.exists` |
+
+### Choix à connaître
+
+- **« Amis choisis » avant la section 6 :** la liste d'amis n'existe pas encore. Pour l'instant, on peut donc choisir n'importe quel compte, en cherchant son **nom**. À l'étape 3, ce choix sera limité aux amis.
+- **Accès par message :** une piste privée envoyée dans un message (section 7) donnera accès à son destinataire seul. La règle d'accès le prévoit déjà (`via: message`). Repasser une piste en Privé ne retire que les accès « Amis choisis ».
+- **Trace des retraits :** un accès retiré reste listé avec sa date de retrait.
+
+### Petit reste à nettoyer
+
+Un fichier de test `D:\tmp-test.log` a été créé par erreur à la racine du disque D:. La protection de l'outil a bloqué sa suppression automatique : vous pouvez le supprimer à la main.
+
+**Fichiers créés :**
+- backend : `src/models/Reaction.js`, `TrackAccess.js`, `Playlist.js`, `ExternalTrack.js` ; `src/routes/library.js` ; `src/migrations/002-library-access.js` ; `test/most-vibe-library.test.js` ;
+- frontend : `components/library-page/*`, `share-dialog`, `reaction-buttons`, `cover-image` ; `shared/services/library.service.ts`, `reactions.service.ts`, `pending-action.service.ts`, `library.spec.ts`.
+
+**Fichiers modifiés :**
+- backend : `src/access.js`, `src/app.js`, `src/routes/public.js`, `src/migrations/index.js`, `src/migrations/001-track-style-visibility.js`, `test/api.test.js` ;
+- `API_CONTRACT.md` ;
+- frontend : `online-track.service.ts`, `track.model.ts`, `auth.guard.ts`, `icons.ts`, `icon.ts`, les pages de connexion et d'inscription, `track-tile`, `player-bar`, `tracks-page`, `app`, `routes.ts`.
+
+**Aucun commit** (non demandé). Base de démonstration conservée et remise dans son état de départ après les tests.
+
+**État :** terminé. Point d'étape avec l'utilisatrice avant les sections 6 et 7.
+
+## Demande 19 — MOST VIBE, étape 3 : sections 6 et 7 (14/10/2026)
+
+> « pas de commit. c'est moi qui doit le faire, continue avec les sections 6 et 7 »
+
+**Interprétation :**
+- **aucun commit** : c'est l'étudiante qui commit elle-même, et l'assistant ne le proposera plus ;
+- continuer la mission avec la section 6 (amis) et la section 7 (messagerie).
+
+**Plan :**
+- **Section 6 — Amis :**
+  - recherche de profils ;
+  - invitations : envoyer, accepter, refuser, annuler ;
+  - retrait d'un ami, blocage et déblocage ;
+  - fil d'activité des amis, limité à ce que l'utilisateur a le droit de voir ;
+  - « Amis choisis » limité aux amis.
+- **Section 7 — Messagerie :**
+  - conversations entre amis, avec le nombre de messages non lus et des notifications ;
+  - outil « Envoyer une de mes pistes » : recherche, pochette, titre, durée, pré-écoute ;
+  - la piste part sous forme de carte musicale ;
+  - une piste privée envoyée donne accès à ce seul destinataire ;
+  - si l'accès est retiré, la carte affiche « Partage interrompu ».
+
+### Questions posées pendant le travail
+
+- **« tu as d'abord fait le commit? »**
+  - Non. L'assistant n'a fait aucun commit.
+  - Le dernier commit de la branche `most-vibe` (`e17973b`, « 14/10/2026 », 14 h 34) est celui de l'étudiante. Il contient 38 fichiers d'avant MOST VIBE.
+  - Tout le travail MOST VIBE (étapes 1 à 3) reste à commiter par elle.
+- **« pourquoi interrupted »**
+  - Le message « interrupted » apparaît quand l'interface reçoit un ordre d'arrêt (touche Échap ou bouton stop). Ce n'était pas une erreur.
+  - Rien n'était cassé : la dernière commande s'était terminée, et le travail a repris au même endroit.
+
+### Incident pendant le travail : connexion MongoDB Atlas refusée
+
+- Les tests d'intégration ont d'abord échoué sans exception : « Could not connect to any servers… IP whitelist ».
+- Internet fonctionnait, mais l'adresse IP publique de l'ordinateur avait changé (185.182.193.109), et Atlas n'accepte que les adresses autorisées.
+- L'assistant a expliqué comment ajouter l'adresse dans **Network Access** et a continué ce qui ne demandait pas la base (documentation, frontend).
+- L'adresse habituelle est revenue (82.225.132.237), la connexion a refonctionné, et tous les tests ont été relancés.
+
+### Ce qui a été fait
+
+#### Backend
+
+| Élément | Détail |
+|---|---|
+| Nouveaux modèles | `Friendship` (invitation ou amitié, une par paire), `Block`, `Conversation` (une par paire d'amis, avec la date de lecture de chacun), `Message` (texte et/ou piste), `Notification` |
+| Module `social.js` | Fonctions communes : sont-ils amis ? l'un a-t-il bloqué l'autre ? liste des amis ; création de notifications. Une seule notification de messages par conversation (avec un compteur) |
+| `routes/social.js` | Recherche de profils (avec la relation de chacun), profil public, invitations (envoyer, accepter, refuser, annuler ; deux invitations croisées = amis), retrait d'un ami, blocage et déblocage, fil d'activité, notifications, compteurs du menu |
+| `routes/messages.js` | Conversations, messages, cartes musicales, lecture (non lus) |
+| « Amis choisis » | Seulement parmi ses amis (`403` sinon) ; notification « a partagé une piste avec vous » |
+| Retrait d'un ami | Retire les accès « Amis choisis » dans les deux sens |
+| Blocage | Supprime l'amitié et les invitations, retire **tous** les accès donnés à la personne bloquée, la cache de la recherche et du profil (`404`), interdit les messages (l'historique reste lisible) |
+| Carte musicale | On ne peut envoyer que **ses** pistes. Une piste non publique devient accessible à **ce seul destinataire** (elle reste privée). Les droits sont revérifiés à chaque lecture : si l'accès est retiré, le serveur ne renvoie plus que le titre et l'état « interrupted » |
+| Durée des pistes | Nouveau champ facultatif `durationSeconds`, mesuré par le navigateur à l'envoi, ou une seule fois depuis l'outil d'envoi de piste |
+| Migration 003 | Crée les 5 collections et leurs index. Annulation sans perte (une collection non vide est renommée) |
+| Base réelle | Sauvegarde `backend/backups/2026-10-14T20-25-15-296Z` (407 documents), **puis** migration 003 appliquée. Elle est aussi appliquée sur la base de démonstration |
+| Documentation | `API_CONTRACT.md` : section « MOST VIBE — étape 3 » |
+
+#### Frontend
+
+| Élément | Détail |
+|---|---|
+| Page **Amis** (`/friends`) | Onglets : Fil d'activité, Mes amis (Écrire, Retirer, Bloquer, avec confirmation), Invitations (reçues : accepter ou refuser ; envoyées : annuler), Trouver des amis (recherche par nom), Bloqués (débloquer) |
+| **Profil public** (`/u/:id`) | Nom, nombre d'amis, boutons selon la relation (Inviter, Accepter, Écrire, Bloquer), pistes visibles par le lecteur. Le nom de l'auteur sur chaque carte de piste mène à son profil |
+| **Messages** (`/messages`, `/messages/:id`) | Liste des conversations avec les non-lus, fil des messages, Entrée pour envoyer, « Vu », messages plus anciens, mise à jour automatique toutes les 8 s. Sur mobile, une seule colonne avec un bouton retour |
+| **Envoyer une de mes pistes** | Recherche dans mes pistes ; pochette, titre, style, **durée** et pré-écoute (lecteur local qui n'interrompt pas le lecteur principal) ; rappel « seul ce destinataire y aura accès » |
+| Carte musicale | Lecture dans le lecteur principal ; « Partage interrompu » si l'accès a été retiré ; « Accès retiré à … » côté expéditeur ; « Piste supprimée » |
+| Notifications | Cloche avec pastille (menu latéral et en-tête mobile) ; panneau des notifications ; un clic mène à la bonne page |
+| Pastilles du menu | Invitations reçues sur « Amis », messages non lus sur « Messages », relues toutes les 20 s quand l'onglet est visible |
+| Barre mobile | Accueil, Explorer, Biblio, **Messages**, Plus (Mixage est dans « Plus »). « Plus » a une pastille s'il contient des nouveautés |
+| Fenêtre de partage | « Amis choisis » propose la liste de **mes amis**, avec un filtre par nom, au lieu de chercher dans tous les comptes |
+
+### Tests
+
+| Tests | Résultat |
+|---|---|
+| Backend `npm test` (dont 6 nouveaux scénarios A, B, C sur la base séparée `most-vibe-test-social`) | **24/24** |
+| Frontend `npm test` (dont 4 nouveaux) | **42/42** |
+| Build de production | OK |
+| Test navigateur (Chrome sans fenêtre et **muet**, base de démonstration) | **51/51** |
+
+Le test navigateur couvre :
+- invitation, pastilles et cloche, acceptation ;
+- fil d'activité (sans la piste privée de Bob) et profils ;
+- message texte, outil d'envoi (durées, recherche, pré-écoute), carte musicale ;
+- accès pour Bob seul (Bob 200, Chloé 403), non-lus, lecture depuis la carte ;
+- retrait de l'accès, puis « Partage interrompu » côté Bob et « Accès retiré » côté Alice ;
+- blocage puis déblocage ;
+- mobile 400 px et absence d'erreur JavaScript.
+
+Captures : `captures/most_vibe_etape3_*.png` (12 images). La base de démonstration est remise à zéro après les tests.
+
+### Défauts trouvés pendant les tests, et corrections
+
+| Ce qui n'allait pas | Ce qui a été changé |
+|---|---|
+| **Page blanche sur `/u/…` et `/messages/…`** (défaut du projet de départ). `src/index.html` n'avait pas de balise `<base href="/">`. Sur une adresse à deux niveaux, le navigateur cherchait `/u/main.js` au lieu de `/main.js`, et l'application ne démarrait pas. Les adresses à un niveau (`/library`) n'étaient pas touchées, d'où un défaut invisible jusqu'ici | Ajout de `<base href="/" />` dans `index.html`. Le titre « Guitar Practice Cloud », resté de l'ancien projet, devient « MOST VIBE » |
+| **Panneau de la cloche coupé** sur ordinateur, par le bord du menu latéral, avec une barre de défilement horizontale | Depuis le menu, le panneau s'ouvre en position fixe à côté du menu (test : entièrement visible) |
+| **Carte musicale qui débordait de sa bulle sur mobile** (« Accès retiré à Bob Bea… », « Vu » coupé) | Largeur minimale réduite, largeur limitée à la bulle, texte qui passe à la ligne |
+| **Flèche « retour » visible sur ordinateur** dans Messages : une règle CSS écrite plus bas (`.icon-btn`) annulait `display: none` | La règle qui la cache est placée après, avec un sélecteur plus précis |
+| **Titre « Amis » poussé à droite** de la page, loin de « Communauté » | Les deux textes sont regroupés |
+| **« Messages » absent de la barre mobile** : seuls les 4 premiers éléments y figuraient, et la pastille des non-lus était invisible sur téléphone | Barre : Accueil, Explorer, Biblio, Messages, Plus (pastille sur « Plus ») |
+| **Écriture des dates de lecture (repéré à la relecture du code)** : la première version réécrivait toute la liste des dates de lecture d'une conversation. Si les deux personnes agissaient au même moment, l'une pouvait effacer la date de l'autre | Chacun ne met à jour que sa propre date (mise à jour ciblée dans MongoDB) |
+| **Dossier vide `backend/src/data/uploads` créé par erreur** : une vérification lancée depuis le mauvais dossier l'avait créé | Supprimé (il était vide) |
+| Tests de l'étape 2 : « Amis choisis » exige maintenant une amitié, et l'annulation des migrations passe aussi par la 003 | Dans le test, A devient amie avec B et C ; les amitiés renommées par l'annulation de la 003 sont remises en place |
+| Test du blocage : il attendait 1 accès retiré, le serveur en retire 2 (celui que B avait donné à A **et** celui qu'A avait donné à B). C'est la règle prévue ; l'erreur était dans le test | Test corrigé ; il vérifie aussi ce second accès |
+
+### Choix à connaître
+
+- **Les messages ne sont pas « en direct » :** la conversation ouverte se met à jour toutes les 8 s, et les pastilles toutes les 20 s, seulement quand l'onglet est visible. Un vrai direct (WebSocket) serait possible plus tard si besoin.
+- **Une invitation refusée est simplement supprimée :** l'expéditeur n'est pas prévenu, et peut réinviter.
+- **Débloquer ne rétablit pas l'amitié :** il faut une nouvelle invitation.
+- **Le script de test de l'étape 2** (`e2e-mv2`, dossier temporaire) partageait avec des personnes non amies. Ce n'est plus permis, volontairement (section 6).
+
+**Fichiers créés :**
+- backend : `src/models/Friendship.js`, `Block.js`, `Conversation.js`, `Message.js`, `Notification.js` ; `src/social.js` ; `src/routes/social.js`, `messages.js` ; `src/migrations/003-friends-messages.js` ; `test/most-vibe-social.test.js` ;
+- frontend : `components/friends-page/*`, `user-profile-page`, `messages-page/*`, `track-picker`, `notification-bell` ; `shared/services/social.service.ts`, `counters.service.ts`, `social.spec.ts` ; `shared/audio/duration.ts`.
+
+**Fichiers modifiés :**
+- backend : `src/app.js`, `src/models/Track.js`, `src/routes/library.js`, `src/routes/public.js`, `src/migrations/index.js`, `test/most-vibe-library.test.js` ;
+- `API_CONTRACT.md` ;
+- frontend : `src/index.html`, `routes.ts`, `app` (menu, pastilles, cloche), `share-dialog`, `track-tile`, `tracks-page`, `track.model.ts`, `track.service.ts`.
+
+**Aucun commit :** c'est l'étudiante qui commit.
+
+**État :** terminé. Point d'étape avec l'utilisatrice avant les sections 8, 9 et 10.
+
+## Demande 20 — MOST VIBE, étape 4 : sections 8, 9 et 10 (14/10/2026)
+
+> « oui » (réponse au point d'étape : « Je continue avec les sections 8 à 10 ? »)
+
+**Interprétation :** continuer la mission avec trois sections :
+- section 8 : mixages et remixes ;
+- section 9 : paramètres ;
+- section 10 : administration.
+
+Toujours **aucun commit**.
+
+**Plan :**
+- **Section 8 — Mixages et remixes :**
+  - brouillons de mixage enregistrés en base, à reprendre plus tard ;
+  - publication avec la visibilité choisie ;
+  - remix soumis à l'accord de l'auteur (demande, puis acceptation ou refus) ;
+  - crédits « Remix par… » et « À partir de la création de… », que le remixeur ne peut pas modifier (contrôlé par le serveur).
+- **Section 9 — Paramètres :**
+  - profil, confidentialité, notifications, utilisateurs bloqués ;
+  - suppression du compte avec confirmation et explication des conséquences.
+- **Section 10 — Administration :**
+  - rôle administrateur sécurisé : utilisateurs, signalements, contenus publics ;
+  - aucun accès aux fichiers privés ni aux conversations.
+
+*Interruption : pendant ce travail, la demande 21 (mise en page de Backing tracks) a été traitée en priorité ; voir plus bas.*
+
+### Ce qui a été fait
+
+#### Section 8 — Mixages et remixes
+
+| Élément | Détail |
+|---|---|
+| Brouillons | La barre « Projet » du studio enregistre en base l'état du studio : pistes des platines, position, tempo, égaliseur, filtre, effets, volumes, crossfader et volume général. « Reprendre » (`/mix?project=…`) recharge les pistes **sans les démarrer** et remet chaque réglage |
+| Publication | Après « Enregistrer le mix » (fonction existante, conservée avec son téléchargement), « Publier… » envoie l'enregistrement comme piste « mixage » avec la visibilité choisie (Privé, Amis choisis puis choix des amis, Public), le style et une pochette facultative |
+| Remix | Bouton « ⋯ » puis « Remixer » sur la piste d'un autre membre : état de l'autorisation, demande avec message, ouverture dans le studio. L'auteur accepte ou refuse dans « Ma bibliothèque › Projets de mixage ». Notifications à chaque étape |
+| Contrôle serveur | Publication **refusée (403)** tant qu'une piste d'un autre membre n'a pas son autorisation acceptée ; refusée (400) si un morceau en ligne est sous licence « ND » (œuvre dérivée interdite) |
+| Crédits | « Remix par… » et « À partir de la création de… » calculés et **figés par le serveur**. Aucune route ne permet de les modifier (vérifié : un `PATCH` qui envoie d'autres crédits ne change rien). Ils sont affichés sur la carte du mixage |
+| Limite assumée | Le serveur ne peut pas analyser l'audio. Il crédite les pistes que le studio déclare avoir utilisées : celles chargées au début de l'enregistrement et pendant celui-ci, chacune vérifiée |
+
+#### Section 9 — Paramètres (`/settings`)
+
+- Profil (nom affiché) et changement de mot de passe (mot de passe actuel demandé).
+- Confidentialité :
+  - recevoir ou non des invitations ;
+  - apparaître ou non dans la recherche (les amis vous trouvent toujours) ;
+  - visibilité proposée pour les nouvelles pistes et les mixages.
+- Notifications : 5 interrupteurs. Les avis de l'administration restent toujours envoyés.
+- Comptes bloqués, avec « Débloquer ».
+- **Suppression du compte :**
+  - les 6 conséquences sont expliquées ;
+  - le mot de passe est demandé, puis il faut taper SUPPRIMER ;
+  - tout est effacé, fichiers compris ;
+  - le jeton de connexion est refusé immédiatement ;
+  - dans les crédits des mixages des autres, le nom devient « Compte supprimé ».
+
+#### Section 10 — Administration (`/admin`)
+
+| Élément | Détail |
+|---|---|
+| Rôle admin | Il s'attribue **seulement en ligne de commande** sur le serveur (`npm run role -- email admin`). Aucune route de l'API ne le permet. Le rôle est relu en base à chaque requête |
+| Signalements | Tout membre peut signaler une piste qu'il peut écouter, ou un profil (motif et précisions). L'admin classe sans suite, dépublie, supprime ou suspend l'auteur, avec une note. L'auteur reçoit un avis |
+| Utilisateurs | Recherche, compteurs, suspension avec raison (jetons refusés tout de suite, connexion refusée avec la raison), levée de la suspension |
+| Contenus | Seulement les pistes **publiques** |
+| Ce que l'admin ne peut pas faire | Écouter une piste privée (403, comme tout le monde), dépublier ou supprimer une piste non publique (403), voir les conversations (aucune route) |
+| Menu | « Administration » n'apparaît que pour un admin. Un membre qui ouvre `/admin` voit « réservé à l'administration » |
+
+#### Base de données
+
+- La vraie base est sauvegardée dans `backend/backups/2026-10-14T21-12-37-517Z` (409 documents), **puis** la migration **004** est appliquée.
+- La migration 004 crée les collections `mixprojects`, `remixrequests` et `reports`. Elle ajoute aux comptes les paramètres par défaut et les champs de suspension, seulement là où ils manquent.
+- Son annulation renomme les collections et copie les paramètres des comptes avant de les retirer : rien n'est perdu.
+- La migration 004 est appliquée aussi sur la base de démonstration.
+- `API_CONTRACT.md` : section « MOST VIBE — étape 4 ».
+
+### Tests
+
+| Tests | Résultat |
+|---|---|
+| Backend (dont 8 nouveaux scénarios sur la base séparée `most-vibe-test-step4` : brouillon, remix refusé puis accepté, crédits figés, licence ND, paramètres, signalements, administration, suppression du compte) | **32/32** |
+| Frontend (dont 4 nouveaux) | **46/46** |
+| Navigateur, étape 4 (Chrome sans fenêtre et **muet**, base de démonstration) | **49/49** |
+| Navigateur, étape 3 (non-régression) | **51/51** |
+
+Le test navigateur de l'étape 4 couvre :
+- brouillon et reprise ;
+- enregistrement, publication bloquée, demande d'autorisation, accord, publication ;
+- crédits sur la carte ;
+- « Remixer » et « Signaler » ;
+- réponse aux demandes ;
+- paramètres et suppression d'un compte ;
+- refus de l'admin aux membres ;
+- dépublication sur signalement, puis l'admin ne peut plus écouter la piste ;
+- suspension ;
+- mobile 400 px et absence d'erreur JavaScript.
+
+Captures : `captures/most_vibe_etape4_*.png` (12 images).
+
+### Défauts trouvés, et corrections
+
+| Ce qui n'allait pas | Ce qui a été changé |
+|---|---|
+| **Textes d'aide avec des espaces en trop autour d'un mot en gras** (« Chaque piste est  Privée  par défaut », depuis l'étape 2 ; aussi dans l'administration). Ces bandeaux étaient des boîtes « flex » : le mot en gras devenait un bloc séparé, avec un écart de chaque côté | Les bandeaux d'aide s'affichent maintenant en texte normal, l'icône étant placée en ligne |
+| **Test d'annulation des migrations (étape 2)** : il annulait 2 migrations, ce qui ne remontait plus jusqu'à la 002 une fois la 004 ajoutée | Il annule maintenant 3 migrations, et remet en place les collections renommées par la 003 et la 004 |
+| **Mes propres scripts de test** (pas l'application) : une notification « ancienne » prise pour la plus récente ; quatre clics écrits avec un sélecteur brut au lieu de `document.querySelector(...)` ; un motif de texte trop strict | Corrigés ; chaque échec a été analysé avant correction pour vérifier que l'application n'était pas en cause |
+
+### Choix à connaître
+
+- **Un enregistrement de mix n'existe que dans l'onglet ouvert.** On le publie avant de fermer la page ; seul le **brouillon** (l'état du studio) est gardé en base.
+- **S'entraîner avec la piste publique d'un autre membre est permis** ; seule la **publication** exige son accord.
+- **L'écran d'attente des sections à venir (`upcoming-page`) est supprimé** : toutes les sections du menu existent maintenant.
+
+**Fichiers créés :**
+- backend : `src/models/MixProject.js`, `RemixRequest.js`, `Report.js` ; `src/routes/mixes.js`, `settings.js`, `admin.js` ; `src/sessions.js`, `src/track-cleanup.js` ; `src/migrations/004-mixes-settings-admin.js` ; `scripts/set-role.mjs` ; `test/most-vibe-step4.test.js` ;
+- frontend : `components/mix-project-bar`, `mix-publish-dialog`, `remix-dialog`, `report-dialog`, `settings-page/*`, `admin-page/*` ; `shared/services/mix.service.ts`, `settings.service.ts`, `admin.service.ts`, `step4.spec.ts`.
+
+**Fichiers modifiés :**
+- backend : `src/app.js`, `server.js`, `constants.js`, `social.js`, `models/User.js`, `Track.js`, `Notification.js`, `routes/public.js`, `routes/social.js`, `migrations/index.js`, `package.json` (script `role`), `test/most-vibe-library.test.js` ;
+- `API_CONTRACT.md` ;
+- frontend : `dj-engine.service.ts`, `dj.model.ts`, `track.model.ts`, `user.model.ts`, `auth.service.ts`, `social.service.ts`, `icons.ts`, `mix-page`, `library-page`, `track-tile`, `reaction-buttons`, `notification-bell`, `user-profile-page`, `friends-page.css`, `tracks-page.ts`, `app` (menu), `routes.ts`.
+
+**Fichier supprimé :** `components/upcoming-page/upcoming-page.ts`, qui ne servait plus.
+
+**Aucun commit :** c'est l'étudiante qui commit.
+
+**État :** terminé. Point d'étape avec l'utilisatrice avant les sections 11 à 13 (finitions, tests A/B/C, livrables).
+
+## Demande 21 — Backing tracks : la liste des pistes déborde sur le bloc d'import (14/10/2026)
+
+> « l'onglet des piste depasse l'onglet qui permet d'importer les musiques essaie d'ajuster ça »
+
+**Contexte :** demande reçue pendant le travail sur l'étape 4 (demande 20). Elle est traitée tout de suite, puis l'étape 4 reprend.
+
+### Diagnostic
+
+- Mesures dans le navigateur (compte de démonstration, 405 pistes) à 1180 px et 1000 px : la carte « Mes pistes » recouvrait la colonne « Importer ».
+- La cause n'était pas la liste. C'était la **colonne d'import, trop étroite** :
+  - la page découpait la largeur en `1fr / 2fr` ; depuis l'ajout du menu latéral MOST VIBE (15,5 rem), il ne restait que 220 à 280 px pour l'import ;
+  - les champs « Choisir un fichier » et les deux boutons « Choisir un dossier / Choisir des fichiers » ont une largeur naturelle fixe, qui ne rétrécit pas ;
+  - ils dépassaient donc de leur colonne et passaient sous la carte « Mes pistes ».
+
+### Ce qui n'allait pas → ce qui a été changé
+
+| Ce qui n'allait pas | Ce qui a été changé |
+|---|---|
+| Colonne d'import réduite à un tiers de la largeur, devenue trop étroite avec le menu latéral | Colonne d'import à largeur garantie (17 à 21 rem) ; la liste prend le reste |
+| Sur un écran moyen, deux colonnes trop serrées | Sous 1100 px, l'import passe au-dessus et la liste en dessous |
+| Champs et sélecteurs de fichiers à largeur fixe, qui dépassaient | Ils suivent la largeur de leur carte (`width: 100%`, `min-width: 0`) |
+| Les deux boutons de l'import multiple restaient côte à côte même sans place | Ils passent l'un sous l'autre quand la place manque |
+
+### Vérification
+
+- Mesure automatique à 1440, 1280, 1180, 1000, 760 et 400 px :
+  - aucun élément de la colonne d'import ne dépasse ;
+  - aucun chevauchement entre les deux cartes ;
+  - pas de défilement horizontal.
+- Tests frontend : 42/42.
+- Captures : `captures/backing_tracks_mise_en_page_corrigee_1180.png` et `_1000.png`.
+
+**Fichiers modifiés :** `components/tracks-page/tracks-page.css`, `components/bulk-import/bulk-import.css`.
+
+**État :** terminé. La demande 20 (étape 4) reprend.
+
+## Demande 22 — MOST VIBE, étape 5 : sections 11, 12 et 13 (15 et 16/10/2026)
+
+> « oui » (réponse au point d'étape : « Je continue avec les sections 11 à 13 ? »)
+
+**Interprétation :** dernière étape de la mission. Toujours **aucun commit**.
+
+**Plan :**
+- **Section 11 — Finitions :**
+  - vérifier page par page les messages d'erreur clairs, les indicateurs de chargement et les états vides utiles ;
+  - corriger ce qui manque ;
+  - session expirée : reconnexion guidée ;
+  - messages de connexion précis (amélioration proposée à la demande 16).
+- **Section 12 — Tests :**
+  - comptes A, B et C (A et B amis, C non) ;
+  - liste de contrôle couvrant chaque point de la mission ;
+  - tests navigateur rangés dans le projet pour pouvoir être relancés.
+- **Section 13 — Livrables :**
+  - résumé des changements par fonctionnalité ;
+  - tests et résultats (échecs compris) ;
+  - services à configurer ;
+  - étapes de déploiement (sans affirmer que le site est en ligne sans l'avoir vérifié).
+
+### Section 11 — Finitions
+
+**Méthode :** un audit automatique de toutes les pages, dans deux situations :
+1. avec un **compte neuf**, sans contenu, pour vérifier les états vides ;
+2. avec une **API coupée**, pour vérifier les erreurs.
+
+La plupart des pages étaient déjà correctes. L'audit a trouvé les défauts suivants, tous corrigés :
+
+| Ce qui n'allait pas | Ce qui a été changé |
+|---|---|
+| Paramètres, API coupée : le profil restait sur « Chargement… » sans fin, et « Comptes bloqués » affichait à tort « Vous n'avez bloqué personne » | Vrais messages d'erreur, avec « Réessayer » |
+| Administration, API coupée : « Chargement… » affiché sous le message d'erreur | Le chargement n'est plus affiché en cas d'erreur |
+| Ma bibliothèque, API coupée : compteurs « 0 » sur les onglets alors que rien n'avait pu être lu | Les compteurs n'apparaissent qu'une fois les données réellement chargées |
+| Backing tracks : erreur technique « Le chargement des pistes a échoué (HTTP 502) » ; état vide sec « Aucune piste. » | « Le serveur ne répond pas… » ; état vide qui explique comment importer |
+| Audio et studio : erreurs sans explication ; « Aucun morceau dans cette catégorie » même sans aucun morceau | Message commun « Le serveur ne répond pas… » ; état vide qui renvoie vers Backing tracks |
+| Session expirée (au bout de 2 h) : chaque page affichait une erreur, sans explication | Déconnexion propre, retour à la connexion avec « Votre session a expiré », puis retour à la page d'origine. Même chose pour un compte suspendu |
+| **Défaut trouvé par le test navigateur :** après une session expirée, on revenait à l'accueil au lieu de la page demandée. Au démarrage, l'erreur 401 arrive pendant la navigation initiale, quand l'adresse vaut encore « / » | On garde l'adresse de la navigation en cours (ou de la barre d'adresse) |
+| Messages de connexion trop vagues (amélioration proposée à la demande 16) | Messages distincts : serveur injoignable, identifiants incorrects, compte suspendu (avec la raison), email déjà utilisé |
+
+### Section 12 — Tests (comptes A, B et C)
+
+- **Liste de contrôle :** [`TESTS_MOST_VIBE.md`](TESTS_MOST_VIBE.md). Chaque point des sections 1 à 11 y est relié aux tests qui le vérifient.
+- **Recette navigateur rangée dans le projet :** dossier [`tests-navigateur/`](tests-navigateur/README.md), avec une bibliothèque commune (Chrome **toujours muet**), cinq étapes et un lanceur `run-all.mjs`. Le lanceur :
+  - démarre l'API de démonstration et les sites de test ;
+  - remet la base de démonstration à zéro avant chaque étape ;
+  - écrit `tests-navigateur/RESULTATS.md`.
+- **Scripts de démonstration dans le backend :**
+  - `npm run demo:seed` crée la base de démonstration ;
+  - `npm run demo:reset` la remet à zéro ;
+  - `npm run demo:start` lance l'API sur cette base (port 3001).
+- **Correction de fond :** le script de démonstration applique maintenant les migrations avant d'ajouter les données. C'est la cause racine du défaut de l'étape 2 (styles effacés par la migration 001 rejouée).
+
+**Résultats :**
+
+| Tests | Résultat |
+|---|---|
+| Serveur (`npm test`) | **34/34** |
+| Interface (`npm test`) | **50/50** |
+| Recette navigateur (`node tests-navigateur/run-all.mjs`) | **197 réussis, 0 échoué(s)** |
+
+| Étape | Contenu | Réussis | Échoués |
+|---|---|---|---|
+| E1 | Sections 1 à 3 : identité, navigation, pages publiques, recherche, liens directs | 30 | 0 |
+| E2 | Sections 4 et 5 : bibliothèque, réactions, action après connexion, visibilité et partage | 38 | 0 |
+| E3 | Sections 6 et 7 : amis, blocage, fil d’activité, messagerie, cartes musicales | 51 | 0 |
+| E4 | Sections 8 à 10 : mixages et remixes, paramètres, administration | 49 | 0 |
+| E5 | Section 11 : états vides, erreurs, session expirée, messages de connexion | 29 | 0 |
+
+**Échecs rencontrés pendant la mise au point de la recette** (dans les outils de test, pas dans l'application) :
+- **Le lanceur se bloquait lui-même :** il servait le site de test dans son propre processus et lançait les étapes avec `spawnSync`, qui gèle ce processus. Le site ne répondait donc plus. Correction : lancement asynchrone, puis sites de test dans des processus séparés (des blocages de Chrome pendant la lecture audio persistaient sinon).
+- **Garde-fous ajoutés :** une limite de 30 s par commande envoyée à Chrome et une durée maximale de 10 minutes par étape. Un blocage devient un échec signalé, jamais une attente sans fin.
+- **Rôle admin effacé :** la remise à zéro remettait Chloé au rôle « membre », alors que l'étape 4 a besoin d'une admin. Le lanceur lui donne ce rôle avec la commande officielle `set-role` (sur la base de démonstration).
+- **Faux échec à l'étape 5 :** les messages que l'application journalise volontairement quand l'API est coupée étaient comptés comme des erreurs. Seules les vraies exceptions comptent maintenant.
+- **Script `demo-start` sur le mauvais port :** il devait lancer l'API de démo sur le port 3001, mais gardait le port 3000 de `.env`, déjà pris par le serveur habituel. Le démarrage échouait. Corrigé : port de démo forcé (3001, ou `DEMO_PORT`).
+- **Tests figés à cause d'une API de démo trop ancienne :** une API de démo lancée la veille, restée allumée pendant la mise en veille de l'ordinateur, faisait se bloquer les étapes 4 et 5. Avec une API redémarrée par le lanceur, la recette complète passe.
+- **Nettoyage prudent après un blocage :** le nettoyage n'arrête que les processus portant la marque des tests (`mostvibe-tests`), jamais le Chrome de l'utilisatrice.
+
+### Section 13 — Livrables
+
+- [`LIVRABLES_MOST_VIBE.md`](LIVRABLES_MOST_VIBE.md) :
+  - résumé des changements par fonctionnalité ;
+  - tests et résultats, échecs compris ;
+  - services à configurer ;
+  - étapes de mise en ligne, vérifications après mise en ligne, retour en arrière.
+- **Préparation de la mise en ligne (backend) :**
+  - `FRONTEND_DIST` : le serveur peut servir le site compilé (une seule adresse pour le site et l'API). Vérifié sur cet ordinateur : une adresse profonde, l'API et le test navigateur de l'étape 1 (30/30) passent sur ce serveur unique ;
+  - `CORS_ORIGIN` : limite les sites autorisés à appeler l'API ;
+  - en production, le serveur refuse de démarrer sans un vrai `JWT_SECRET` (32 caractères minimum).
+- `backend/.env.example`, `API_CONTRACT.md` (section « étape 5 ») et `README.md` (renvois vers les livrables) sont mis à jour.
+- **Le site n'a pas été mis en ligne :** les étapes sont prêtes, mais aucune n'a été exécutée sur un hébergeur. Le document le dit clairement.
+
+**Fichiers créés :**
+- `LIVRABLES_MOST_VIBE.md`, `TESTS_MOST_VIBE.md` ;
+- `tests-navigateur/` (`README.md`, `lib.mjs`, `serveur-test.mjs`, `run-all.mjs`, `etape1` à `etape5`, `.gitignore`, `RESULTATS.md`) ;
+- `backend/scripts/demo-seed.mjs`, `demo-reset.mjs`, `demo-start.mjs` ;
+- `frontend-starter/src/app/shared/interceptors/auth.interceptor.spec.ts`.
+
+**Fichiers modifiés :**
+- backend : `src/app.js`, `src/server.js`, `.env.example`, `package.json` (scripts `demo:*`), `test/api.test.js` (2 tests ajoutés) ;
+- frontend : `auth.interceptor.ts`, `auth.service.ts`, les pages de connexion et d'inscription, `library.service.ts` (message d'erreur commun), `reactions.service.ts`, les pages Paramètres, Administration, Ma bibliothèque, Backing tracks et Audio, `dj-library` ;
+- `API_CONTRACT.md`, `README.md`.
+
+**Aucun commit :** c'est l'étudiante qui commit.
+
+**État :** terminé. La mission MOST VIBE (sections 1 à 13) est terminée.
+
+## Demande 23 — Question sur le problème rencontré pendant la recette (16/10/2026)
+
+> « c'est quoi le probleme rencontré? »
+
+**Contexte :** la question est arrivée pendant la mise au point de la recette navigateur de la demande 22. L'étudiante avait ouvert `RAPPORT_IA.md`.
+
+**Réponse donnée :**
+- **L'application n'était pas en cause.** Ses défauts de la section 11 avaient déjà été trouvés et corrigés (voir demande 22).
+- **Les problèmes venaient de l'outil de test automatique :**
+
+| Ce qui n'allait pas | Ce qui a été changé |
+|---|---|
+| Le lanceur de recette servait le site ET attendait les tests dans le même programme : le site cessait de répondre | Lancement asynchrone, puis sites de test dans des processus séparés |
+| La remise à zéro de la démo enlevait le rôle admin nécessaire à l'étape 4 | Le lanceur donne ce rôle avec la commande officielle `set-role` avant l'étape 4 |
+| Des messages d'erreur volontaires (API coupée exprès) étaient comptés comme des plantages | Seules les vraies exceptions comptent à l'étape 5 |
+| Le script `demo-start` gardait le port 3000 de `.env` (déjà pris) au lieu du port 3001 | Port de démo forcé (3001, ou `DEMO_PORT`) |
+| Une API de démo lancée la veille, restée allumée pendant la mise en veille, faisait se figer les étapes 4 et 5 | API redémarrée par le lanceur. Garde-fous : 30 s maximum par commande envoyée à Chrome, 10 minutes maximum par étape |
+
+**Résultat après corrections :** recette complète **197 réussis, 0 échoué**. Tests du serveur : 34/34. Tests de l'interface : 50/50.
+
+**Fichiers modifiés :** `backend/scripts/demo-start.mjs`, `tests-navigateur/lib.mjs`, `tests-navigateur/run-all.mjs`, `tests-navigateur/etape5-finitions.mjs`.
 
 **État :** terminé.

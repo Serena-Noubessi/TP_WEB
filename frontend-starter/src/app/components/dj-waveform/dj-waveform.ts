@@ -14,8 +14,8 @@ const ZOOM_SECONDS = 8;
 })
 export class DjWaveformComponent {
   readonly deck = input.required<DeckEngine>();
-  readonly color = input('#2ee6c5');
-  readonly lowColor = input('#ffffff');
+  readonly color = input('#007fff');
+  readonly lowColor = input('#18324f');
 
   private readonly zoomCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('zoom');
   private readonly overviewCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('overview');
@@ -101,7 +101,7 @@ export class DjWaveformComponent {
         if (x > width) break;
         if (time < 0) continue;
         const isBar = index % 4 === 0;
-        context.fillStyle = isBar ? 'rgb(255 255 255 / 55%)' : 'rgb(255 255 255 / 18%)';
+        context.fillStyle = isBar ? 'rgb(24 50 79 / 45%)' : 'rgb(24 50 79 / 15%)';
         context.fillRect(Math.round(x), 0, isBar ? 2 : 1, isBar ? height : height * 0.18);
       }
     }
@@ -136,10 +136,10 @@ export class DjWaveformComponent {
       let peak = 0;
       for (let bin = from; bin < to && bin < peaks.length; bin++) peak = Math.max(peak, peaks[bin]);
       const size = peak * height * 0.48;
-      context.fillStyle = x < played ? '#5b6272' : this.color();
+      context.fillStyle = x < played ? '#b5cbe6' : this.color();
       context.fillRect(x, height / 2 - size, 1, size * 2);
     }
-    context.fillStyle = '#ffffff';
+    context.fillStyle = '#18324f';
     context.fillRect(played - 1, 0, 2, height);
   }
 }

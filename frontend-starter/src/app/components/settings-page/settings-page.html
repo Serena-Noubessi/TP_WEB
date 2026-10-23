@@ -1,0 +1,119 @@
+<section class="settings">
+  <header class="head">
+    <p class="eyebrow">Compte</p>
+    <h1>Paramètres</h1>
+  </header>
+
+  @if (saved()) { <p class="flash" role="status"><app-icon name="check" /> {{ saved() }}</p> }
+  @if (saveError()) { <p class="state error" role="alert">{{ saveError() }}</p> }
+
+  <!-- ======================= Profil ======================= -->
+  <section class="panel" aria-labelledby="profile-title">
+    <h2 id="profile-title"><app-icon name="user" /> Profil</h2>
+    @if (auth.currentUser(); as user) {
+      <form class="inline" (submit)="$event.preventDefault(); saveName(name.value)">
+        <label>Nom affiché <input #name type="text" maxlength="60" [value]="user.name" /></label>
+        <button type="submit" class="btn primary">Enregistrer</button>
+      </form>
+      <p class="help">Seul votre nom est visible par les autres membres ; votre email ({{ user.email }}) ne l’est jamais. <a [routerLink]="['/u', user.id]">Voir mon profil public</a></p>
+      @if (profileMessage()) { <p class="flash" role="status">{{ profileMessage() }}</p> }
+      @if (profileError()) { <p class="state error" role="alert">{{ profileError() }}</p> }
+    } @else if (profileLoadError()) {
+      <p class="state error" role="alert">{{ profileLoadError() }}</p>
+    } @else {
+      <p class="state" role="status">Chargement…</p>
+    }
+  </section>
+
+  <!-- ======================= Mot de passe ======================= -->
+  <section class="panel" aria-labelledby="password-title">
+    <h2 id="password-title"><app-icon name="lock" /> Mot de passe</h2>
+    <form #pwd class="grid-form" (submit)="$event.preventDefault(); changePassword(current.value, next.value, again.value, pwd)">
+      <label>Mot de passe actuel <input #current type="password" autocomplete="current-password" required /></label>
+      <label>Nouveau mot de passe (8 caractères minimum) <input #next type="password" autocomplete="new-password" minlength="8" required /></label>
+      <label>Confirmer le nouveau mot de passe <input #again type="password" autocomplete="new-password" required /></label>
+      <button type="submit" class="btn primary">Changer le mot de passe</button>
+    </form>
+    @if (passwordMessage()) { <p class="flash" role="status">{{ passwordMessage() }}</p> }
+    @if (passwordError()) { <p class="state error" role="alert">{{ passwordError() }}</p> }
+  </section>
+
+  @if (loadError()) {
+    <p class="state error" role="alert">{{ loadError() }}</p>
+  } @else if (!settings()) {
+    <p class="state" role="status">Chargement de vos paramètres…</p>
+  } @else {
+    @let s = settings()!;
+    <!-- ======================= Confidentialité ======================= -->
+    <section class="panel" aria-labelledby="privacy-title">
+      <h2 id="privacy-title"><app-icon name="eye-off" /> Confidentialité</h2>
+      <label class="switch-row">
+        <span><strong>Recevoir des invitations d’amis</strong><small>Désactivé : personne ne peut vous inviter (vos amis actuels le restent).</small></span>
+        <input type="checkbox" role="switch" [checked]="s.privacy.allowFriendRequests" (change)="setPrivacy('allowFriendRequests', $any($event.target).checked, 'Invitations')" />
+      </label>
+      <label class="switch-row">
+        <span><strong>Apparaître dans la recherche de profils</strong><small>Désactivé : seuls vos amis peuvent encore vous trouver par votre nom.</small></span>
+        <input type="checkbox" role="switch" [checked]="s.privacy.showInSearch" (change)="setPrivacy('showInSearch', $any($event.target).checked, 'Recherche')" />
+      </label>
+      <label class="select-row">
+        <span><strong>Visibilité proposée pour mes nouvelles pistes</strong><small>Préremplie à l’envoi d’une piste et à la publication d’un mix (modifiable à chaque fois).</small></span>
+        <select [value]="s.privacy.defaultVisibility" (change)="setPrivacy('defaultVisibility', $any($event.target).value, 'Visibilité par défaut')">
+          <option value="private">Privé</option>
+          <option value="friends">Amis choisis</option>
+          <option value="public">Public</option>
+        </select>
+      </label>
+    </section>
+
+    <!-- ======================= Notifications ======================= -->
+    <section class="panel" aria-labelledby="notif-title">
+      <h2 id="notif-title"><app-icon name="bell" /> Notifications</h2>
+      <p class="help">Choisissez ce qui apparaît dans la cloche. Les avis de l’administration sont toujours envoyés.</p>
+      @for (item of notificationLabels; track item.id) {
+        <label class="switch-row">
+          <span><strong>{{ item.label }}</strong><small>{{ item.help }}</small></span>
+          <input type="checkbox" role="switch" [checked]="s.notificationPrefs[item.id]" (change)="setNotification(item.id, $any($event.target).checked, item.label)" />
+        </label>
+      }
+    </section>
+  }
+
+  <!-- ======================= Comptes bloqués ======================= -->
+  <section class="panel" aria-labelledby="blocked-title">
+    <h2 id="blocked-title"><app-icon name="ban" /> Comptes bloqués</h2>
+    @if (blockedMessage()) { <p class="flash" role="status">{{ blockedMessage() }}</p> }
+    @if (blockedError()) {
+      <p class="state error" role="alert">{{ blockedError() }} <button type="button" class="link" (click)="loadBlocked()">Réessayer</button></p>
+    } @else if (blocked() === null) {
+      <p class="state" role="status">Chargement…</p>
+    } @else if (!blocked()!.length) {
+      <p class="state">Vous n’avez bloqué personne. Pour bloquer quelqu’un : bouton « Bloquer » sur son profil ou dans vos amis.</p>
+    } @else {
+      <ul class="list">
+        @for (item of blocked(); track item.user.id) {
+          <li>
+            <span><strong>{{ item.user.name }}</strong><small>Bloqué(e) le {{ date(item.blockedAt) }}</small></span>
+            <button type="button" class="btn ghost small" (click)="unblock(item.user)">Débloquer</button>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  <!-- ======================= Suppression du compte ======================= -->
+  <section class="panel danger-zone" aria-labelledby="delete-title">
+    <h2 id="delete-title"><app-icon name="trash" /> Supprimer mon compte</h2>
+    <p><strong>Lisez attentivement ce qui va se passer :</strong></p>
+    <ul class="consequences">
+      @for (line of settings()?.deleteConsequences ?? []; track line) { <li>{{ line }}</li> }
+    </ul>
+    <form class="grid-form" (submit)="$event.preventDefault(); deleteAccount()">
+      <label>Votre mot de passe <input type="password" autocomplete="current-password" [value]="deletePassword()" (input)="deletePassword.set($any($event.target).value)" /></label>
+      <label>Tapez <strong>{{ settings()?.deleteConfirmation ?? 'SUPPRIMER' }}</strong> pour confirmer
+        <input type="text" autocomplete="off" [value]="deleteText()" (input)="deleteText.set($any($event.target).value)" />
+      </label>
+      @if (deleteError()) { <p class="state error" role="alert">{{ deleteError() }}</p> }
+      <button type="submit" class="btn danger" [disabled]="!deleteReady() || deleting()">{{ deleting() ? 'Suppression…' : 'Supprimer définitivement mon compte' }}</button>
+    </form>
+  </section>
+</section>

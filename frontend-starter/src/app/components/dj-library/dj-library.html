@@ -9,7 +9,7 @@
   </div>
 
   <div class="crate-bar" role="toolbar" aria-label="Bacs par catégorie">
-    <button type="button" class="crate-pill" [class.is-active]="categoryFilter() === ''" [attr.aria-pressed]="categoryFilter() === ''" (click)="selectCategory('')" style="--cat: #e4e8f0">
+    <button type="button" class="crate-pill" [class.is-active]="categoryFilter() === ''" [attr.aria-pressed]="categoryFilter() === ''" (click)="selectCategory('')" style="--cat: var(--mv-primary)">
       <app-icon name="library" /> Tous
     </button>
     @for (category of categories; track category.id) {

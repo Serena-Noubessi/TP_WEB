@@ -1,5 +1,10 @@
 <section class="card">
   <h1>Créer un compte</h1>
+  @if (pendingLabel()) {
+    <p class="pending-banner" role="status">Connectez-vous pour {{ pendingLabel() }} : ce sera fait automatiquement juste après.</p>
+  } @else if (returnUrl) {
+    <p class="pending-banner" role="status">Connectez-vous pour continuer.</p>
+  }
   <form [formGroup]="form" (ngSubmit)="submit()">
     <label for="register-name">Nom</label>
     <input id="register-name" formControlName="name" autocomplete="name" />
@@ -26,5 +31,5 @@
   @if (error()) {
     <p class="error">{{ error() }}</p>
   }
-  <p><a routerLink="/login">Déjà inscrit ?</a></p>
+  <p><a routerLink="/login" [queryParams]="linkParams()">Déjà inscrit ?</a></p>
 </section>

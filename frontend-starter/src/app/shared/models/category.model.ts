@@ -1,74 +1,72 @@
 import { IconName } from '../icons/icons';
 import { Track } from './track.model';
 
-/** Catégorie musicale d'un morceau. */
+/** Style musical d'un morceau (MOST VIBE). */
 export interface MusicCategory {
+  /** Identifiant enregistré en base (champ `style` des pistes). */
   id: string;
   label: string;
   /** Icône Lucide (voir shared/icons/icons.ts). */
   icon: IconName;
-  /** Couleur principale (pastilles, bordures). */
+  /** Couleur associée (pastilles, bordures), choisie pour s'accorder avec la charte. */
   color: string;
-  /** Mots reconnus dans un nom de dossier ou une étiquette de genre (ID3) pour classer automatiquement. */
+  /** Mots reconnus dans un nom de dossier ou un genre ID3 pour classer automatiquement. */
   aliases: string[];
 }
 
+/**
+ * Les 8 styles de MOST VIBE (identiques à STYLES dans backend/src/constants.js).
+ * Regroupement décidé le 14/10/2026 : house, techno, dubstep… → électro.
+ * Dance ajouté ensuite : dance, dance house, edm, disco… ne vont plus dans électro.
+ */
 export const CATEGORIES: MusicCategory[] = [
-  { id: 'house', label: 'House', icon: 'house', color: '#2ec4a6', aliases: ['house', 'deep house'] },
-  { id: 'dance-house', label: 'Dance House', icon: 'disc', color: '#ff5fa2', aliases: ['dance house', 'dance-house', 'dance', 'edm'] },
-  { id: 'electro', label: 'Electro', icon: 'zap', color: '#f5b700', aliases: ['electro', 'electronic', 'electronica'] },
-  { id: 'pop', label: 'Pop', icon: 'mic', color: '#a66cff', aliases: ['pop'] },
-  { id: 'hip-hop', label: 'Hip-Hop', icon: 'headphones', color: '#ff7a3d', aliases: ['hip-hop', 'hip hop', 'hiphop', 'rap'] },
-  { id: 'techno', label: 'Techno', icon: 'cpu', color: '#3d8bff', aliases: ['techno'] },
-  { id: 'dubstep', label: 'Dubstep', icon: 'waveform', color: '#22c55e', aliases: ['dubstep'] },
-  { id: 'autre', label: 'Autre', icon: 'globe', color: '#94a3b8', aliases: ['autre', 'other'] },
+  { id: 'hip-hop', label: 'Hip-hop', icon: 'headphones', color: '#ff7a59', aliases: ['hip-hop', 'hip hop', 'hiphop', 'rap', 'trap', 'boom bap'] },
+  { id: 'afro', label: 'Afro', icon: 'drum', color: '#f5a524', aliases: ['afro', 'afro house', 'afrobeat', 'afrobeats', 'amapiano', 'coupé-décalé', 'makossa'] },
+  {
+    id: 'electro',
+    label: 'Électro',
+    icon: 'zap',
+    color: '#007fff',
+    aliases: ['electro', 'électro', 'electronic', 'electronica', 'house', 'deep house', 'techno', 'dubstep', 'trance', 'drum & bass', 'drum and bass', 'synthwave'],
+  },
+  { id: 'pop', label: 'Pop', icon: 'mic', color: '#e05ad8', aliases: ['pop'] },
+  { id: 'jazz', label: 'Jazz', icon: 'piano', color: '#a99bef', aliases: ['jazz', 'blues', 'soul'] },
+  { id: 'rock', label: 'Rock', icon: 'guitar', color: '#ef4444', aliases: ['rock', 'metal', 'punk'] },
+  { id: 'dance', label: 'Dance', icon: 'party', color: '#14b8a6', aliases: ['dance', 'dance house', 'dance-house', 'eurodance', 'edm', 'disco', 'dance pop'] },
+  { id: 'autres', label: 'Autres', icon: 'globe', color: '#7d93ad', aliases: ['autres', 'autre', 'other', 'lo-fi', 'lofi', 'reggaeton'] },
 ];
 
-/** Catégorie affichée pour les morceaux importés avant le classement. */
-export const UNCLASSIFIED: MusicCategory = { id: 'non-classe', label: 'Non classé', icon: 'folder', color: '#b8c4bf', aliases: [] };
+/** Style par défaut, utilisé aussi quand une valeur est inconnue. */
+export const DEFAULT_CATEGORY = CATEGORIES[CATEGORIES.length - 1];
 
-/**
- * Le backend ne stocke qu'un titre : la catégorie est donc écrite en tête du titre,
- * entre crochets (« [House] Stellar Rooftop »). Elle est ainsi conservée sur le
- * serveur et la recherche existante du backend (sur le titre) sait filtrer par catégorie.
- */
-const PREFIX = /^\[([^\]]{1,40})\]\s*/;
+/** Ancien préfixe de titre (« [House] … ») : retiré à l'affichage s'il en reste un. */
+const LEGACY_PREFIX = /^\[([^\]]{1,40})\]\s*/;
 
 export function findCategory(id: string | null | undefined): MusicCategory | undefined {
   return CATEGORIES.find((category) => category.id === id);
 }
 
-/** Reconnaît une catégorie dans un texte libre (nom de dossier, genre ID3 « Autre / Trance »…). */
+/** Reconnaît un style dans un texte libre (nom de dossier « 01-house », genre ID3 « Autre / Trance »…). */
 export function guessCategory(text: string | null | undefined): MusicCategory | undefined {
   if (!text) return undefined;
   const clean = text.toLowerCase().replace(/^\d+[-_ ]*/, '').replace(/[_]/g, ' ').trim();
   const head = clean.split('/')[0].trim();
   const exact = CATEGORIES.find((category) => category.aliases.includes(head));
   if (exact) return exact;
-  // Les alias les plus longs d'abord : « dance house mix » doit donner Dance House, pas House.
-  const aliases = CATEGORIES.flatMap((category) => category.aliases.map((alias) => ({ alias, category })))
-    .sort((a, b) => b.alias.length - a.alias.length);
+  // Les mots les plus longs d'abord : « dance house mix » doit donner Électro via « dance house ».
+  const aliases = CATEGORIES.flatMap((category) => category.aliases.map((alias) => ({ alias, category }))).sort(
+    (a, b) => b.alias.length - a.alias.length,
+  );
   return aliases.find(({ alias }) => clean.includes(alias))?.category;
 }
 
-export function categoryOf(track: Track): MusicCategory {
-  if (track.online) return findCategory(track.online.category) ?? UNCLASSIFIED;
-  const match = PREFIX.exec(track.title);
-  return (match && CATEGORIES.find((category) => category.label.toLowerCase() === match[1].toLowerCase())) || UNCLASSIFIED;
+/** Style d'une piste : champ `style` (base), ou catégorie d'un morceau en ligne (anciens identifiants convertis). */
+export function categoryOf(track: Pick<Track, 'style' | 'online'>): MusicCategory {
+  const id = track.style ?? track.online?.category;
+  return findCategory(id) ?? guessCategory(id) ?? DEFAULT_CATEGORY;
 }
 
-/** Titre sans le préfixe de catégorie, pour l'affichage. */
+/** Titre affiché (sans un éventuel ancien préfixe de catégorie). */
 export function displayTitle(track: Pick<Track, 'title'>): string {
-  return track.title.replace(PREFIX, '');
-}
-
-/** Titre à envoyer au backend pour une catégorie donnée. */
-export function titleWithCategory(title: string, category: MusicCategory | undefined): string {
-  const clean = title.replace(PREFIX, '').trim();
-  return category ? `[${category.label}] ${clean}` : clean;
-}
-
-/** Texte de recherche envoyé au backend pour ne garder qu'une catégorie. */
-export function categorySearch(category: MusicCategory): string {
-  return `[${category.label}]`;
+  return track.title.replace(LEGACY_PREFIX, '');
 }

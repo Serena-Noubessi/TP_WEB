@@ -6,10 +6,14 @@ import { DjDeckComponent } from '../dj-deck/dj-deck';
 import { DjLibraryComponent } from '../dj-library/dj-library';
 import { DjMixerComponent } from '../dj-mixer/dj-mixer';
 import { DjVisualizerComponent } from '../dj-visualizer/dj-visualizer';
+import { MixProjectBarComponent } from '../mix-project-bar/mix-project-bar';
 
-/** Onglet « Mixage » : deux platines, le mixeur et la bibliothèque de l'utilisateur. */
+/**
+ * Onglet « Mixage » : deux platines, le mixeur et la bibliothèque de l'utilisateur,
+ * plus la barre « Projet » (brouillons et publication, section 8).
+ */
 @Component({
-  imports: [DjDeckComponent, DjMixerComponent, DjLibraryComponent, DjVisualizerComponent],
+  imports: [DjDeckComponent, DjMixerComponent, DjLibraryComponent, DjVisualizerComponent, MixProjectBarComponent],
   templateUrl: './mix-page.html',
   styleUrl: './mix-page.css',
   host: { '(document:keydown)': 'shortcut($event)' },

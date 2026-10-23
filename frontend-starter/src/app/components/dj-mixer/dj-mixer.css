@@ -5,9 +5,9 @@
   gap: 0.9rem;
   height: 100%;
   padding: 0.9rem;
-  border: 1px solid #2a303c;
+  border: 1px solid var(--mv-border);
   border-radius: 14px;
-  background: var(--dj-panel-bg, linear-gradient(180deg, #20242d, #15181e));
+  background: var(--dj-panel-bg, linear-gradient(180deg, var(--mv-card), var(--mv-card)));
   backdrop-filter: var(--dj-panel-blur, none);
 }
 
@@ -23,7 +23,7 @@
   gap: 0.55rem;
   padding: 0.6rem 0.3rem;
   border-radius: 10px;
-  background: #12151b;
+  background: var(--mv-inset);
 }
 
 :host .channel .channel-name {
@@ -43,14 +43,14 @@
   width: 0.45rem;
   overflow: hidden;
   border-radius: 3px;
-  background: #0a0b0e;
+  background: var(--mv-inset);
 }
 
 :host .meter span {
   position: absolute;
   inset: auto 0 0;
   height: var(--level, 0%);
-  background: linear-gradient(0deg, #2ee66b 0%, #ffd60a 70%, #ff3b5c 100%);
+  background: linear-gradient(0deg, #2ee66b 0%, var(--mv-warning) 70%, var(--mv-danger) 100%);
   background-size: 100% 8rem;
   background-position: bottom;
 }
@@ -64,7 +64,7 @@
   inset: 0 auto 0 0;
   width: var(--level, 0%);
   height: auto;
-  background: linear-gradient(90deg, #2ee66b 0%, #ffd60a 70%, #ff3b5c 100%);
+  background: linear-gradient(90deg, #2ee66b 0%, var(--mv-warning) 70%, var(--mv-danger) 100%);
 }
 
 :host label.fader,
@@ -94,11 +94,11 @@
 :host .crossfader .crossfader-labels {
   display: flex;
   justify-content: space-between;
-  color: #9aa3b5;
+  color: var(--mv-muted);
 }
 
 :host .crossfader .crossfader-labels small {
-  color: #9aa3b5;
+  color: var(--mv-muted);
   font-size: 0.68rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -110,7 +110,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  accent-color: #e4e8f0;
+  accent-color: var(--mv-primary);
 }
 
 :host .record {
@@ -124,39 +124,39 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.6rem;
-  border: 1px solid #353c4a;
+  border: 1px solid var(--mv-border);
   border-radius: 8px;
-  color: #e4e8f0;
-  background: #232833;
+  color: var(--mv-text);
+  background: var(--mv-control);
   font-size: 0.85rem;
   cursor: pointer;
 }
 
-:host .record button.record-button:hover:not(:disabled) { background: #2c3240; }
+:host .record button.record-button:hover:not(:disabled) { background: var(--mv-control-hover); }
 
 :host .record button.record-button.is-on {
-  border-color: #ff3b5c;
-  background: #3a1820;
+  border-color: var(--mv-danger);
+  background: var(--mv-danger-soft);
 }
 
 :host .record .record-dot {
   width: 0.7rem;
   height: 0.7rem;
   border-radius: 50%;
-  background: #ff3b5c;
+  background: var(--mv-danger);
 }
 
 :host .record button.record-button.is-on .record-dot { animation: blink 1s steps(2) infinite; }
 
 :host .record a.download {
-  color: #2ee6c5;
+  color: var(--mv-primary);
   font-size: 0.85rem;
   text-align: center;
 }
 
 :host .mixer .mixer-message {
   margin: 0;
-  color: #ffd60a;
+  color: var(--mv-warning);
   font-size: 0.82rem;
 }
 

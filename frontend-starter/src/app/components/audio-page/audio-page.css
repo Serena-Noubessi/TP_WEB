@@ -1,24 +1,19 @@
-/* Même largeur que la console de mixage, élargie sans transform (le fond d'écran est en position fixe). */
-:host {
-  --page-width: min(1300px, calc(100vw - 2.5rem));
-  display: block;
-  width: var(--page-width);
-  margin-inline: calc((100% - var(--page-width)) / 2);
-}
+/* Pas de transform sur :host : le fond d'écran animé est en position fixe. */
+:host { display: block; width: 100%; }
 
 :host .audio-page {
-  --panel: #15181e;
+  --panel: var(--mv-card);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   padding: 1.2rem;
   border-radius: 20px;
-  color: #e4e8f0;
-  background: #0d0f13;
+  color: var(--mv-text);
+  background: var(--mv-bg);
 }
 
 :host .audio-page.has-visuals {
-  --panel: rgb(16 18 24 / 80%);
+  --panel: rgb(255 255 255 / 84%);
   background: transparent;
 }
 
@@ -30,17 +25,17 @@
   border-radius: 0;
 }
 
-:host .audio-page:fullscreen::backdrop { background: #000; }
+:host .audio-page:fullscreen::backdrop { background: rgb(24 50 79 / 18%); }
 
 :host .audio-hero .eyebrow {
   margin: 0;
-  color: #b388ff;
+  color: var(--mv-secondary);
   font-size: 0.75rem;
   letter-spacing: 0.15em;
 }
 
-:host .audio-hero h1 { margin: 0.2rem 0; color: #f3f5f9; }
-:host .audio-hero .intro { margin: 0; color: #9aa3b5; }
+:host .audio-hero h1 { margin: 0.2rem 0; color: var(--mv-text); }
+:host .audio-hero .intro { margin: 0; color: var(--mv-muted); }
 
 :host .audio-grid {
   display: grid;
@@ -57,7 +52,7 @@
 :host .panel {
   min-width: 0;
   padding: 1rem;
-  border: 1px solid #2a303c;
+  border: 1px solid var(--mv-border);
   border-radius: 16px;
   background: var(--panel);
 }
@@ -73,7 +68,7 @@
 }
 
 :host .np-cover {
-  --cat: #b388ff;
+  --cat: var(--mv-secondary);
   display: grid;
   width: 3.6rem;
   height: 3.6rem;
@@ -81,7 +76,7 @@
   place-items: center;
   border-radius: 12px;
   color: var(--cat);
-  background: color-mix(in srgb, var(--cat) 18%, #12151b);
+  background: color-mix(in srgb, var(--cat) 18%, var(--mv-inset));
 }
 
 :host .np-cover img { width: 100%; height: 100%; object-fit: cover; }
@@ -90,14 +85,14 @@
 
 :host .np-text strong {
   overflow: hidden;
-  color: #f3f5f9;
+  color: var(--mv-text);
   font-size: 1.15rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-:host .np-text small { color: #9aa3b5; }
-:host .np-status { color: #ffd60a; font-size: 0.8rem; }
+:host .np-text small { color: var(--mv-muted); }
+:host .np-status { color: var(--mv-warning); font-size: 0.8rem; }
 
 :host .timeline {
   display: grid;
@@ -105,7 +100,7 @@
   align-items: center;
   gap: 0.6rem;
   margin-top: 0.9rem;
-  color: #9aa3b5;
+  color: var(--mv-muted);
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
 }
@@ -121,7 +116,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  accent-color: #b388ff;
+  accent-color: var(--mv-secondary);
 }
 
 :host .transport {
@@ -138,10 +133,10 @@
   height: 2.5rem;
   padding: 0;
   place-items: center;
-  border: 1px solid #353c4a;
+  border: 1px solid var(--mv-border);
   border-radius: 50%;
-  color: #c3c9d5;
-  background: #1b1f27;
+  color: var(--mv-text);
+  background: var(--mv-card);
   font-size: 1.1rem;
   cursor: pointer;
 }
@@ -152,8 +147,8 @@
   font-size: 0.95rem;
 }
 
-:host .audio-page button.icon-button:hover:not(:disabled) { color: #f3f5f9; background: #262b36; }
-:host .audio-page button.icon-button.is-on { border-color: #b388ff; color: #b388ff; }
+:host .audio-page button.icon-button:hover:not(:disabled) { color: var(--mv-text); background: var(--mv-border); }
+:host .audio-page button.icon-button.is-on { border-color: var(--mv-secondary); color: var(--mv-secondary); }
 
 :host .audio-page button.play-button {
   display: inline-grid;
@@ -163,9 +158,9 @@
   place-items: center;
   border: 0;
   border-radius: 50%;
-  color: #0d0f13;
-  background: linear-gradient(135deg, #c9a7ff, #8f5cff);
-  box-shadow: 0 8px 24px rgb(143 92 255 / 40%);
+  color: var(--mv-on-accent);
+  background: linear-gradient(135deg, var(--mv-secondary), var(--mv-secondary-strong));
+  box-shadow: 0 8px 24px rgb(169 155 239 / 45%);
   cursor: pointer;
 }
 
@@ -173,7 +168,7 @@
 :host .audio-page button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 :host .audio-page button:focus-visible {
-  outline: 2px solid #b388ff;
+  outline: 2px solid var(--mv-secondary);
   outline-offset: 2px;
 }
 
@@ -188,50 +183,50 @@
   align-content: start;
   gap: 0.5rem;
   padding: 0.8rem;
-  border: 1px solid #262b36;
+  border: 1px solid var(--mv-border);
   border-radius: 12px;
-  background: rgb(0 0 0 / 18%);
+  background: var(--mv-inset);
 }
 
 :host .setting-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #c3c9d5;
+  color: var(--mv-text);
   font-size: 0.85rem;
   font-weight: 600;
 }
 
 :host .setting-head > span { display: inline-flex; align-items: center; gap: 0.4rem; }
-:host .setting-head output { color: #b388ff; font-variant-numeric: tabular-nums; }
+:host .setting-head output { color: var(--mv-secondary); font-variant-numeric: tabular-nums; }
 
 :host .chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 
 :host .audio-page button.chip {
   padding: 0.25rem 0.6rem;
-  border: 1px solid #353c4a;
+  border: 1px solid var(--mv-border);
   border-radius: 999px;
-  color: #c3c9d5;
-  background: #1b1f27;
+  color: var(--mv-text);
+  background: var(--mv-card);
   font-size: 0.75rem;
   cursor: pointer;
 }
 
-:host .audio-page button.chip.is-on { border-color: #b388ff; color: #0d0f13; background: #b388ff; }
+:host .audio-page button.chip.is-on { border-color: var(--mv-secondary); color: var(--mv-bg); background: var(--mv-secondary); }
 
 :host .audio-page label.check {
   display: flex;
   align-items: flex-start;
   gap: 0.45rem;
   margin: 0;
-  color: #9aa3b5;
+  color: var(--mv-muted);
   font-size: 0.75rem;
 }
 
-:host .audio-page label.check input { margin-top: 0.1rem; accent-color: #b388ff; }
+:host .audio-page label.check input { margin-top: 0.1rem; accent-color: var(--mv-secondary); }
 
-:host .message { margin: 0.6rem 0 0; color: #ffd60a; font-size: 0.85rem; }
-:host .hint { margin: 0.8rem 0 0; color: #6b7385; font-size: 0.75rem; }
+:host .message { margin: 0.6rem 0 0; color: var(--mv-warning); font-size: 0.85rem; }
+:host .hint { margin: 0.8rem 0 0; color: var(--mv-muted); font-size: 0.75rem; }
 
 /* ---------- Bibliothèque ---------- */
 
@@ -242,17 +237,17 @@
   gap: 0.7rem;
 }
 
-:host .library-head h2 { margin: 0; color: #f3f5f9; font-size: 1.05rem; }
+:host .library-head h2 { margin: 0; color: var(--mv-text); font-size: 1.05rem; }
 
 :host label.search { display: block; flex: 1; min-width: 10rem; margin: 0; }
 
 :host .search input {
   width: 100%;
   padding: 0.5rem 0.7rem;
-  border: 1px solid #353c4a;
+  border: 1px solid var(--mv-border);
   border-radius: 8px;
-  color: #e4e8f0;
-  background: #0f1116;
+  color: var(--mv-text);
+  background: var(--mv-inset);
 }
 
 :host .pills {
@@ -270,10 +265,10 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem 0.7rem;
-  border: 1px solid color-mix(in srgb, var(--cat) 55%, #353c4a);
+  border: 1px solid color-mix(in srgb, var(--cat) 55%, var(--mv-border));
   border-radius: 999px;
-  color: #e4e8f0;
-  background: color-mix(in srgb, var(--cat) 12%, #1b1f27);
+  color: var(--mv-text);
+  background: color-mix(in srgb, var(--cat) 12%, var(--mv-card));
   font-size: 0.78rem;
   white-space: nowrap;
   cursor: pointer;
@@ -281,14 +276,14 @@
 
 :host .audio-page button.pill.is-on {
   border-color: var(--cat);
-  color: #0d0f13;
+  color: var(--mv-on-accent);
   background: var(--cat);
 }
 
 :host .pill .count {
   padding: 0 0.35rem;
   border-radius: 999px;
-  background: rgb(0 0 0 / 25%);
+  background: rgb(24 50 79 / 10%);
   font-size: 0.7rem;
 }
 
@@ -309,20 +304,20 @@
   gap: 0.7rem;
   width: 100%;
   padding: 0.5rem 0.6rem;
-  border: 1px solid #262b36;
+  border: 1px solid var(--mv-border);
   border-left: 3px solid var(--cat);
   border-radius: 10px;
-  color: #e4e8f0;
-  background: #1b1f27;
+  color: var(--mv-text);
+  background: var(--mv-card);
   text-align: left;
   cursor: pointer;
 }
 
-:host .audio-page button.row:hover { background: #232833; }
+:host .audio-page button.row:hover { background: var(--mv-control); }
 
 :host .tracks li.is-current button.row {
-  border-color: color-mix(in srgb, var(--cat) 70%, #262b36);
-  background: color-mix(in srgb, var(--cat) 16%, #1b1f27);
+  border-color: color-mix(in srgb, var(--cat) 70%, var(--mv-border));
+  background: color-mix(in srgb, var(--cat) 16%, var(--mv-card));
 }
 
 :host .row-icon {
@@ -332,7 +327,7 @@
   place-items: center;
   border-radius: 8px;
   color: var(--cat);
-  background: color-mix(in srgb, var(--cat) 20%, #12151b);
+  background: color-mix(in srgb, var(--cat) 20%, var(--mv-inset));
 }
 
 :host .row-text { display: grid; min-width: 0; }
@@ -344,8 +339,8 @@
   white-space: nowrap;
 }
 
-:host .row-text small { color: #8891a3; font-size: 0.75rem; }
-:host .tracks li.empty { padding: 0.6rem; color: #9aa3b5; }
+:host .row-text small { color: var(--mv-muted); font-size: 0.75rem; }
+:host .tracks li.empty { padding: 0.6rem; color: var(--mv-muted); }
 
 /* Petit égaliseur animé sur le morceau en cours de lecture. */
 :host .bars { display: flex; align-items: flex-end; gap: 2px; height: 0.9rem; }
@@ -374,15 +369,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #c3c9d5;
+  color: var(--mv-text);
 }
 
 :host .audio-page button.ghost {
   padding: 0.4rem 0.7rem;
-  border: 1px solid #353c4a;
+  border: 1px solid var(--mv-border);
   border-radius: 7px;
-  color: #e4e8f0;
-  background: #232833;
+  color: var(--mv-text);
+  background: var(--mv-control);
   font-size: 0.8rem;
   cursor: pointer;
 }

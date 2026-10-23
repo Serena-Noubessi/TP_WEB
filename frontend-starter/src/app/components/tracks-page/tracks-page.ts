@@ -5,26 +5,25 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Track } from '../../shared/models/track.model';
 import { OnlineTrackService } from '../../shared/services/online-track.service';
 import { CategoryStatsService } from '../../shared/services/category-stats.service';
-import { CATEGORIES, categoryOf, categorySearch, displayTitle, findCategory, MusicCategory, titleWithCategory } from '../../shared/models/category.model';
+import { CATEGORIES, categoryOf, displayTitle, MusicCategory } from '../../shared/models/category.model';
+import { TrackVisibility } from '../../shared/models/track.model';
 import { BulkImportComponent } from '../bulk-import/bulk-import';
 import { IconComponent } from '../icon/icon';
 import { TrackService } from '../../shared/services/track.service';
 import { OnlineTrackAddComponent } from '../online-track-add/online-track-add';
+import { ShareDialogComponent } from '../share-dialog/share-dialog';
+import { measureDuration } from '../../shared/audio/duration';
+import { AUDIO_ACCEPT, AUDIO_FORMATS_LABEL, isAcceptedAudio, isMpegVariant, prepareAudioFile } from '../../shared/audio/audio-formats';
+import { SettingsService } from '../../shared/services/settings.service';
+import { httpMessage } from '../../shared/services/library.service';
+import { AuthService } from '../../shared/services/auth.service';
 
 const MAX_AUDIO_FILE_SIZE = 25 * 1024 * 1024;
 const MAX_COVER_FILE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_AUDIO_TYPES = new Set([
-  'audio/mpeg',
-  'audio/wav',
-  'audio/x-wav',
-  'audio/ogg',
-  'audio/mp4',
-  'audio/x-m4a',
-]);
 const ALLOWED_COVER_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 @Component({
-  imports: [DatePipe, ReactiveFormsModule, OnlineTrackAddComponent, BulkImportComponent, IconComponent],
+  imports: [DatePipe, ReactiveFormsModule, OnlineTrackAddComponent, BulkImportComponent, IconComponent, ShareDialogComponent],
   templateUrl: './tracks-page.html',
   styleUrl: './tracks-page.css',
 })
@@ -37,7 +36,13 @@ export class TracksPageComponent implements OnDestroy {
   readonly displayTitle = displayTitle;
   /** Catégorie sélectionnée dans la grille (chaîne vide = toutes). */
   readonly categoryFilter = signal('');
-  readonly uploadCategory = new FormControl('', { nonNullable: true });
+  readonly uploadCategory = new FormControl('autres', { nonNullable: true });
+  /** Privé par défaut (règle MOST VIBE). « Amis choisis » ouvre la fenêtre de partage après l'envoi. */
+  readonly uploadVisibility = new FormControl<TrackVisibility>('private', { nonNullable: true });
+  /** Piste dont la fenêtre « Visibilité et partage » est ouverte. */
+  readonly sharing = signal<Track | null>(null);
+  private readonly settingsService = inject(SettingsService);
+  private readonly auth = inject(AuthService);
 
   readonly tracks = signal<Track[]>([]);
   readonly page = signal(1);
@@ -76,10 +81,24 @@ export class TracksPageComponent implements OnDestroy {
   private destroyed = false;
   file?: File;
   coverFile?: File;
+  /** Durée du fichier choisi, en secondes (mesurée par le navigateur). */
+  private fileDuration?: number;
+  /** Vérification d'un fichier MPEG en cours. */
+  readonly checkingFile = signal(false);
+  readonly audioAccept = AUDIO_ACCEPT;
 
   constructor() {
     this.load();
     this.stats.refresh();
+    // Section 9 : la visibilité proposée à l'envoi est celle choisie dans les paramètres.
+    if (this.auth.token()) {
+      this.settingsService.get().subscribe({
+        next: (settings) => {
+          if (!this.uploading()) this.uploadVisibility.setValue(settings.privacy.defaultVisibility);
+        },
+        error: () => undefined,
+      });
+    }
   }
 
   ngOnDestroy(): void {
@@ -103,10 +122,10 @@ export class TracksPageComponent implements OnDestroy {
       return;
     }
 
-    if (!ALLOWED_AUDIO_TYPES.has(file.type)) {
+    if (!isAcceptedAudio(file)) {
       this.file = undefined;
       input.value = '';
-      this.uploadError.set('Format audio non accepté. Choisissez un fichier MP3, WAV, OGG ou M4A pris en charge.');
+      this.uploadError.set(`Format audio non accepté. Choisissez un fichier ${AUDIO_FORMATS_LABEL}.`);
       return;
     }
 
@@ -117,8 +136,36 @@ export class TracksPageComponent implements OnDestroy {
       return;
     }
 
+    // Fichier MPEG (.mpeg, .mpg…) : on vérifie d'abord que le navigateur sait en lire le son.
+    if (isMpegVariant(file)) {
+      this.file = undefined;
+      this.checkingFile.set(true);
+      void prepareAudioFile(file).then(
+        (ready) => {
+          this.checkingFile.set(false);
+          if (input.files?.[0] !== file) return;
+          this.useFile(ready);
+        },
+        (error: Error) => {
+          this.checkingFile.set(false);
+          input.value = '';
+          this.uploadError.set(error.message);
+        },
+      );
+      return;
+    }
+    this.useFile(file);
+  }
+
+  /** Fichier audio prêt à être envoyé. */
+  private useFile(file: File): void {
     this.file = file;
     console.debug('[TracksPage] Fichier sélectionné', this.file?.name);
+    // Durée mesurée en arrière-plan dès le choix du fichier ; envoyée avec la piste si elle est prête.
+    this.fileDuration = undefined;
+    void measureDuration(file).then((seconds) => {
+      if (this.file === file && seconds) this.fileDuration = seconds;
+    });
   }
 
   chooseCover(event: Event): void {
@@ -153,7 +200,7 @@ export class TracksPageComponent implements OnDestroy {
   load(): void {
     this.loading.set(true);
     this.error.set('');
-    this.service.list(this.page(), 5, this.searchParam()).subscribe({
+    this.service.list(this.page(), 5, this.titleFilter().trim(), this.categoryFilter()).subscribe({
       next: (response) => {
         const docs = 'docs' in response ? response.docs : response.items;
         const totalPages = 'totalPages' in response ? response.totalPages : response.pages;
@@ -187,7 +234,7 @@ export class TracksPageComponent implements OnDestroy {
             typeof error.error.message === 'string'
               ? error.error.message
               : '';
-          this.error.set(apiMessage || `Le chargement des pistes a échoué (HTTP ${error.status}).`);
+          this.error.set(apiMessage || httpMessage(error, 'Le chargement des pistes a échoué. Réessayez avec « Actualiser ».'));
         }
         this.loading.set(false);
       },
@@ -197,16 +244,6 @@ export class TracksPageComponent implements OnDestroy {
   go(page: number): void {
     this.page.set(page);
     this.load();
-  }
-
-  /**
-   * Texte envoyé au paramètre « search » du backend : le texte saisi, ou à défaut
-   * le préfixe de la catégorie choisie (« [House] »), présent en tête du titre.
-   */
-  private searchParam(): string {
-    const text = this.titleFilter().trim();
-    const category = findCategory(this.categoryFilter());
-    return text || (category ? categorySearch(category) : '');
   }
 
   selectCategory(id: string): void {
@@ -271,8 +308,8 @@ export class TracksPageComponent implements OnDestroy {
 
     this.uploading.set(true);
     this.uploadProgress.set(null);
-    const title = titleWithCategory(this.title.value || this.file.name, findCategory(this.uploadCategory.value));
-    this.service.upload(this.file, title, this.coverFile).subscribe({
+    const title = this.title.value || this.file.name;
+    this.service.upload(this.file, title, this.coverFile, { style: this.uploadCategory.value, visibility: this.uploadVisibility.value, durationSeconds: this.fileDuration }).subscribe({
       next: (event) => {
         if (event.type === HttpEventType.UploadProgress) {
           this.uploadProgress.set(
@@ -298,7 +335,13 @@ export class TracksPageComponent implements OnDestroy {
         this.coverFile = undefined;
         if (this.coverInput) this.coverInput.value = '';
         this.uploadError.set('');
-        this.uploadSuccess.set('Piste ajoutée avec succès.');
+        if (track.visibility === 'friends') {
+          // Section 5 : on choisit tout de suite les personnes qui pourront écouter.
+          this.uploadSuccess.set('Piste ajoutée. Choisissez maintenant les personnes qui pourront l’écouter.');
+          this.sharing.set(track);
+        } else {
+          this.uploadSuccess.set('Piste ajoutée avec succès.');
+        }
         this.stats.refresh();
         this.page.set(1);
         this.load();
@@ -319,17 +362,32 @@ export class TracksPageComponent implements OnDestroy {
     });
   }
 
+  /** Met à jour le badge de visibilité après un changement dans la fenêtre de partage. */
+  shareChanged(updated: Track): void {
+    this.tracks.update((list) => list.map((track) => (track.id === updated.id ? { ...track, visibility: updated.visibility } : track)));
+  }
+
   deleteTrack(track: Track): void {
     if (this.deletingTrackId()) return;
     if (track.online) {
       // Morceau en ligne : on retire seulement la référence, le fichier reste chez sa source.
       if (!window.confirm(`Retirer « ${track.title} » de votre liste ? Le fichier reste disponible chez ${track.online.sourceLabel}.`)) return;
-      this.online.remove(track.id);
-      if (this.playingTrackId() === track.id) {
-        this.audioUrl.set('');
-        this.playingTrackId.set('');
-      }
-      this.deleteSuccess.set(`« ${displayTitle(track)} » a été retiré de votre liste.`);
+      this.deleteErrorTrackId.set('');
+      this.deleteError.set('');
+      this.online.remove(track.id).then(
+        () => {
+          if (this.playingTrackId() === track.id) {
+            this.audioUrl.set('');
+            this.playingTrackId.set('');
+          }
+          this.deleteSuccess.set(`« ${displayTitle(track)} » a été retiré de votre liste.`);
+        },
+        (error: unknown) => {
+          console.error('[TracksPage] Retrait du morceau en ligne impossible', error);
+          this.deleteErrorTrackId.set(track.id);
+          this.deleteError.set('Le retrait a échoué. Réessayez.');
+        },
+      );
       return;
     }
     if (!window.confirm(`Voulez-vous vraiment supprimer « ${track.title} » ? Cette action est définitive.`)) {

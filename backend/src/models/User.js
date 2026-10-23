@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import { DEFAULT_NOTIFICATION_PREFS, DEFAULT_PRIVACY, ROLES, VISIBILITIES } from "../constants.js";
 
 /*
  * Un schéma Mongoose décrit la forme des documents MongoDB et leurs règles de
@@ -17,6 +18,24 @@ const schema = new mongoose.Schema(
     },
     // select:false empêche de renvoyer le hash par défaut dans les requêtes.
     passwordHash: { type: String, required: true, select: false },
+    // MOST VIBE : « admin » donne accès à l'espace d'administration (section 10).
+    role: { type: String, enum: ROLES, default: "user" },
+    // MOST VIBE étape 4 (section 9) : confidentialité et notifications.
+    privacy: {
+      allowFriendRequests: { type: Boolean, default: DEFAULT_PRIVACY.allowFriendRequests },
+      showInSearch: { type: Boolean, default: DEFAULT_PRIVACY.showInSearch },
+      defaultVisibility: { type: String, enum: VISIBILITIES, default: DEFAULT_PRIVACY.defaultVisibility },
+    },
+    notificationPrefs: {
+      friend_request: { type: Boolean, default: true },
+      friend_accepted: { type: Boolean, default: true },
+      message: { type: Boolean, default: true },
+      track_shared: { type: Boolean, default: true },
+      remix: { type: Boolean, default: true },
+    },
+    // Section 10 : compte suspendu par un administrateur (connexion refusée).
+    suspendedAt: { type: Date, default: null },
+    suspendedReason: { type: String, trim: true, maxlength: 300, default: "" },
   },
   { timestamps: true },
 );
@@ -54,7 +73,18 @@ schema.methods.toPublic = function () {
     id: this.id,
     name: this.name,
     email: this.email,
+    role: this.role ?? "user",
     createdAt: this.createdAt,
+  };
+};
+
+/** Paramètres du compte (section 9), avec les valeurs par défaut pour un ancien compte. */
+schema.methods.settings = function () {
+  const privacy = this.privacy?.toObject?.() ?? this.privacy ?? {};
+  const prefs = this.notificationPrefs?.toObject?.() ?? this.notificationPrefs ?? {};
+  return {
+    privacy: { ...DEFAULT_PRIVACY, ...privacy },
+    notificationPrefs: { ...DEFAULT_NOTIFICATION_PREFS, ...prefs },
   };
 };
 

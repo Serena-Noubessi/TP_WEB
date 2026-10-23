@@ -4,7 +4,7 @@ import { DeckEngine } from '../audio/deck-engine';
 import { DECK_PROCESSOR_SOURCE } from '../audio/deck-processor';
 import { readAnalysis, writeAnalysis } from '../audio/dj-storage';
 import { analyzeTrack } from '../audio/track-analyzer';
-import { DeckId } from '../models/dj.model';
+import { DeckId, MixDeckState, MixSources, MixState } from '../models/dj.model';
 import { Track } from '../models/track.model';
 import { AuthService } from './auth.service';
 import { OnlineAudioError } from '../audio/online-audio-error';
@@ -32,6 +32,15 @@ export class DjEngineService {
   readonly syncMessage = signal('');
   readonly recording = signal(false);
   readonly recordingUrl = signal('');
+  /** Dernier enregistrement (fichier à publier, section 8) et sa durée en secondes. */
+  readonly recordingBlob = signal<Blob | null>(null);
+  readonly recordingSeconds = signal(0);
+  /**
+   * Pistes entendues dans l'enregistrement : celles chargées au début, puis
+   * toutes celles chargées pendant l'enregistrement. Elles sont créditées à la publication.
+   */
+  readonly recordedSources = signal<MixSources>({ tracks: [], external: [] });
+  private recordingStartedAt = 0;
   /** Lecture lancée automatiquement dès qu'un morceau est prêt sur une platine (activée par défaut). */
   readonly autoPlay = signal(this.readAutoPlay());
 
@@ -73,8 +82,10 @@ export class DjEngineService {
     return this.ready as Promise<AudioContext>;
   }
 
-  loadTrack(id: DeckId, track: Track): void {
+  /** `autoPlay: false` charge sans démarrer (reprise d'un brouillon). */
+  loadTrack(id: DeckId, track: Track, options: { autoPlay?: boolean } = {}): void {
     const deck = this.deck(id);
+    if (this.recording()) this.addRecordedSource(track);
     const token = deck.beginLoad(track);
     const audioReady = this.ensureAudio();
     console.debug(`[DjEngine] Chargement de « ${track.title} » sur la platine ${id}`);
@@ -87,7 +98,7 @@ export class DjEngineService {
       this.downloads[id] = controller;
       this.online
         .fetchAudio(track, (progress) => deck.setDownloadProgress(token, progress.total ? progress.loaded / progress.total : null), controller.signal)
-        .then((blob) => this.decodeInto(deck, token, track, blob, audioReady))
+        .then((blob) => this.decodeInto(deck, token, track, blob, audioReady, options.autoPlay))
         .catch((error: unknown) => {
           if (error instanceof OnlineAudioError && error.kind === 'cancelled') return;
           console.error(`[DjEngine] Téléchargement en ligne impossible pour la platine ${id}`, error);
@@ -98,7 +109,7 @@ export class DjEngineService {
 
     this.tracks.audio(track.id).subscribe({
       next: (blob) => {
-        void this.decodeInto(deck, token, track, blob, audioReady);
+        void this.decodeInto(deck, token, track, blob, audioReady, options.autoPlay);
       },
       error: (error: HttpErrorResponse) => {
         console.error(`[DjEngine] Téléchargement impossible pour la platine ${id}`, error);
@@ -224,7 +235,15 @@ export class DjEngineService {
       const previous = this.recordingUrl();
       if (previous) URL.revokeObjectURL(previous);
       this.recordingUrl.set('');
+      this.recordingBlob.set(null);
       this.recordChunks = [];
+      // Les pistes déjà chargées sur les platines font partie de l'enregistrement.
+      this.recordedSources.set({ tracks: [], external: [] });
+      for (const deck of Object.values(this.decks)) {
+        const loaded = deck.track();
+        if (loaded) this.addRecordedSource(loaded);
+      }
+      this.recordingStartedAt = performance.now();
       const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
       const recorder = new MediaRecorder(this.recordDestination.stream, mimeType ? { mimeType } : {});
       recorder.ondataavailable = (event) => {
@@ -233,6 +252,8 @@ export class DjEngineService {
       recorder.onstop = () => {
         const blob = new Blob(this.recordChunks, { type: recorder.mimeType || 'audio/webm' });
         this.recordingUrl.set(URL.createObjectURL(blob));
+        this.recordingBlob.set(blob);
+        this.recordingSeconds.set(Math.round((performance.now() - this.recordingStartedAt) / 100) / 10);
         this.recording.set(false);
         console.debug('[DjEngine] Mix enregistré', blob.size);
       };
@@ -240,6 +261,56 @@ export class DjEngineService {
       this.recorder = recorder;
       this.recording.set(true);
     }).catch(() => undefined);
+  }
+
+  private addRecordedSource(track: Track): void {
+    const key = track.online ? 'external' : 'tracks';
+    this.recordedSources.update((sources) => (sources[key].includes(track.id) ? sources : { ...sources, [key]: [...sources[key], track.id] }));
+  }
+
+  /** État du studio à enregistrer dans un brouillon (section 8). */
+  captureState(): MixState {
+    const decks: MixState['decks'] = {};
+    for (const id of ['A', 'B'] as const) {
+      const deck = this.deck(id);
+      const track = deck.track();
+      if (!track) continue;
+      decks[id] = {
+        source: { kind: track.online ? 'external' : 'track', id: track.id },
+        title: track.title,
+        position: Math.round(deck.time() * 10) / 10,
+        pitch: deck.pitch(),
+        pitchRange: deck.pitchRange(),
+        eq: { ...deck.eq() },
+        filter: deck.filter(),
+        fx: { ...deck.fx() },
+        volume: deck.volume(),
+      };
+    }
+    return { crossfader: this.crossfader(), masterVolume: this.masterVolume(), decks };
+  }
+
+  /**
+   * Reprise d'un brouillon : charge la piste sans la démarrer, puis remet les
+   * réglages et la position une fois le fichier décodé. Renvoie false si le
+   * chargement a échoué (piste supprimée, accès retiré…).
+   */
+  async restoreDeck(id: DeckId, state: MixDeckState, track: Track): Promise<boolean> {
+    const deck = this.deck(id);
+    this.loadTrack(id, track, { autoPlay: false });
+    const started = Date.now();
+    while (!deck.loaded() && !deck.error() && Date.now() - started < 60_000) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    if (!deck.loaded()) return false;
+    deck.setPitchRange(state.pitchRange);
+    deck.setPitch(state.pitch);
+    for (const band of ['high', 'mid', 'low'] as const) deck.setEq(band, state.eq[band] ?? 0);
+    deck.setFilter(state.filter);
+    for (const type of ['echo', 'reverb', 'flanger'] as const) deck.setFx(type, state.fx[type] ?? 0);
+    deck.setVolume(state.volume);
+    deck.seek(Math.min(state.position, Math.max(0, deck.duration() - 1)));
+    return true;
   }
 
   private async buildGraph(ctx: AudioContext): Promise<AudioContext> {
@@ -284,6 +355,7 @@ export class DjEngineService {
     track: Track,
     blob: Blob,
     audioReady: Promise<AudioContext>,
+    autoPlay = this.autoPlay(),
   ): Promise<void> {
     try {
       const ctx = await audioReady;
@@ -291,7 +363,7 @@ export class DjEngineService {
       deck.setBuffer(token, buffer);
       // Lecture automatique : le morceau démarre dès qu'il est décodé, sans attendre
       // l'analyse du tempo (qui se poursuit en arrière-plan).
-      if (this.autoPlay() && deck.isCurrentLoad(token)) deck.play();
+      if (autoPlay && deck.isCurrentLoad(token)) deck.play();
       if (!deck.isCurrentLoad(token)) return;
 
       // Analyse en arrière-plan : la platine est déjà jouable pendant ce calcul.

@@ -1,12 +1,11 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { CATEGORIES, categorySearch } from '../models/category.model';
+import { CATEGORIES } from '../models/category.model';
 import { TrackService } from './track.service';
 
 /**
- * Nombre de morceaux par catégorie, calculé avec la route existante
- * GET /api/tracks (paramètre search) : une petite requête (limit=1) par catégorie,
- * dont seul le champ totalDocs est utilisé.
+ * Nombre de mes morceaux par style, calculé avec GET /api/tracks?style=… :
+ * une petite requête (limit=1) par style, dont seul le champ totalDocs est utilisé.
  */
 @Injectable({ providedIn: 'root' })
 export class CategoryStatsService {
@@ -21,7 +20,7 @@ export class CategoryStatsService {
       error: (error: HttpErrorResponse) => console.error('[CategoryStats] Total indisponible', error),
     });
     for (const category of CATEGORIES) {
-      this.tracks.list(1, 1, categorySearch(category)).subscribe({
+      this.tracks.list(1, 1, '', category.id).subscribe({
         next: (response) => {
           const count = 'totalDocs' in response ? response.totalDocs : response.total;
           this.counts.update((counts) => ({ ...counts, [category.id]: count }));

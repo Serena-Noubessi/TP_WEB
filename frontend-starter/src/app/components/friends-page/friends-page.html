@@ -1,0 +1,226 @@
+<section class="friends">
+  <header class="head">
+    <div>
+      <p class="eyebrow">Communauté</p>
+      <h1>Amis</h1>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Rubriques Amis">
+    @for (item of tabs; track item.id) {
+      <button type="button" role="tab" class="tab" [class.active]="tab() === item.id" [attr.aria-selected]="tab() === item.id" (click)="selectTab(item.id)">
+        <app-icon [name]="item.icon" /> {{ item.label }}
+        @if (item.id === 'invitations' && counters.counters().invitations) {
+          <span class="count alert">{{ counters.counters().invitations }}</span>
+        }
+      </button>
+    }
+  </nav>
+
+  @if (flash()) { <p class="flash" role="status"><app-icon name="check" /> {{ flash() }}</p> }
+  @if (error()) { <p class="state error" role="alert">{{ error() }}</p> }
+
+  @switch (tab()) {
+    <!-- ======================= Fil d'activité ======================= -->
+    @case ('feed') {
+      <section class="panel" aria-labelledby="feed-title">
+        <h2 id="feed-title">Fil d’activité</h2>
+        <p class="help"><app-icon name="lock" /> Seules les créations de vos amis que vous avez le droit d’écouter apparaissent ici (publiques, ou partagées avec vous).</p>
+        @if (feedError()) {
+          <div class="state error" role="alert">{{ feedError() }} <button type="button" class="link" (click)="loadFeed()">Réessayer</button></div>
+        } @else if (feed() === null) {
+          <p class="state" role="status">Chargement du fil…</p>
+        } @else if (!friendCount()) {
+          <div class="empty">
+            <app-icon name="users" size="2rem" />
+            <p>Vous n’avez pas encore d’amis. Trouvez des personnes par leur nom et invitez-les : leurs nouvelles créations s’afficheront ici.</p>
+            <button type="button" class="btn primary" (click)="selectTab('find')"><app-icon name="search" /> Trouver des amis</button>
+          </div>
+        } @else if (!feed()!.length) {
+          <div class="empty">
+            <app-icon name="sparkles" size="2rem" />
+            <p>Vos amis n’ont encore rien publié que vous puissiez écouter.</p>
+          </div>
+        } @else {
+          <ul class="feed">
+            @for (item of feed(); track item.track.id; let i = $index) {
+              <li class="feed-item">
+                <p class="feed-line">
+                  <a class="who" [routerLink]="['/u', item.actor.id]"><span class="avatar small" aria-hidden="true">{{ initial(item.actor.name) }}</span> {{ item.actor.name }}</a>
+                  {{ item.type === 'mix_published' ? 'a publié un mixage' : 'a publié une piste' }}
+                  <time>· {{ date(item.at) }}</time>
+                </p>
+                <div class="feed-tile"><app-track-tile [track]="item.track" (play)="playFeed(i)" /></div>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+
+    <!-- ======================= Mes amis ======================= -->
+    @case ('friends') {
+      <section class="panel" aria-labelledby="list-title">
+        <h2 id="list-title">Mes amis</h2>
+        @if (linksError()) {
+          <div class="state error" role="alert">{{ linksError() }} <button type="button" class="link" (click)="loadLinks()">Réessayer</button></div>
+        } @else if (links() === null) {
+          <p class="state" role="status">Chargement…</p>
+        } @else if (!links()!.friends.length) {
+          <div class="empty">
+            <app-icon name="users" size="2rem" />
+            <p>Aucun ami pour l’instant.</p>
+            <button type="button" class="btn primary" (click)="selectTab('find')"><app-icon name="search" /> Trouver des amis</button>
+          </div>
+        } @else {
+          <ul class="people">
+            @for (link of links()!.friends; track link.user.id) {
+              <li class="person">
+                <span class="avatar" aria-hidden="true">{{ initial(link.user.name) }}</span>
+                <span class="info">
+                  <a [routerLink]="['/u', link.user.id]"><strong>{{ link.user.name }}</strong></a>
+                  <small>Amis depuis le {{ date(link.acceptedAt ?? link.createdAt) }}</small>
+                </span>
+                @if (confirm()?.userId === link.user.id) {
+                  <span class="confirm" role="alertdialog" [attr.aria-label]="'Confirmer pour ' + link.user.name">
+                    <small>
+                      @if (confirm()!.action === 'remove') {
+                        Retirer {{ link.user.name }} de vos amis ? Les accès « Amis choisis » entre vous seront retirés.
+                      } @else {
+                        Bloquer {{ link.user.name }} ? Vous ne pourrez plus échanger, et ses accès à vos pistes seront retirés.
+                      }
+                    </small>
+                    <span class="actions">
+                      <button type="button" class="btn small danger" [disabled]="busy() === link.user.id"
+                        (click)="confirm()!.action === 'remove' ? removeFriend(link.user) : block(link.user)">Confirmer</button>
+                      <button type="button" class="btn small ghost" (click)="confirm.set(null)">Annuler</button>
+                    </span>
+                  </span>
+                } @else {
+                  <span class="actions">
+                    <button type="button" class="btn small primary" (click)="message(link.user)" [disabled]="busy() === link.user.id"><app-icon name="message" /> Écrire</button>
+                    <button type="button" class="btn small ghost" (click)="confirm.set({ userId: link.user.id, action: 'remove' })">Retirer</button>
+                    <button type="button" class="btn small ghost" (click)="confirm.set({ userId: link.user.id, action: 'block' })"><app-icon name="lock" /> Bloquer</button>
+                  </span>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+
+    <!-- ======================= Invitations ======================= -->
+    @case ('invitations') {
+      <section class="panel" aria-labelledby="inv-title">
+        <h2 id="inv-title">Invitations reçues</h2>
+        @if (linksError()) {
+          <div class="state error" role="alert">{{ linksError() }} <button type="button" class="link" (click)="loadLinks()">Réessayer</button></div>
+        } @else if (links() === null) {
+          <p class="state" role="status">Chargement…</p>
+        } @else {
+          @if (!links()!.incoming.length) {
+            <p class="state">Aucune invitation reçue.</p>
+          } @else {
+            <ul class="people">
+              @for (link of links()!.incoming; track link.requestId) {
+                <li class="person">
+                  <span class="avatar" aria-hidden="true">{{ initial(link.user.name) }}</span>
+                  <span class="info">
+                    <a [routerLink]="['/u', link.user.id]"><strong>{{ link.user.name }}</strong></a>
+                    <small>Reçue le {{ date(link.createdAt) }}</small>
+                  </span>
+                  <span class="actions">
+                    <button type="button" class="btn small primary" (click)="accept(link)" [disabled]="busy() === link.requestId"><app-icon name="check" /> Accepter</button>
+                    <button type="button" class="btn small ghost" (click)="refuse(link)" [disabled]="busy() === link.requestId">Refuser</button>
+                  </span>
+                </li>
+              }
+            </ul>
+          }
+          <h2 class="sub">Invitations envoyées</h2>
+          @if (!links()!.outgoing.length) {
+            <p class="state">Aucune invitation en attente.</p>
+          } @else {
+            <ul class="people">
+              @for (link of links()!.outgoing; track link.requestId) {
+                <li class="person">
+                  <span class="avatar" aria-hidden="true">{{ initial(link.user.name) }}</span>
+                  <span class="info">
+                    <a [routerLink]="['/u', link.user.id]"><strong>{{ link.user.name }}</strong></a>
+                    <small>Envoyée le {{ date(link.createdAt) }} · en attente de réponse</small>
+                  </span>
+                  <span class="actions">
+                    <button type="button" class="btn small ghost" (click)="cancel(link)" [disabled]="busy() === link.requestId">Annuler l’invitation</button>
+                  </span>
+                </li>
+              }
+            </ul>
+          }
+        }
+      </section>
+    }
+
+    <!-- ======================= Trouver des amis ======================= -->
+    @case ('find') {
+      <section class="panel" aria-labelledby="find-title">
+        <h2 id="find-title">Trouver des amis</h2>
+        <label class="search">
+          <span class="sr-only">Chercher un profil par son nom</span>
+          <app-icon name="search" />
+          <input #query type="search" placeholder="Nom de la personne…" autocomplete="off" (input)="search$.next(query.value)" />
+        </label>
+        <p class="help"><app-icon name="info" /> La recherche porte sur le nom affiché. Les adresses email ne sont jamais visibles.</p>
+        @if (searching()) { <p class="state" role="status">Recherche…</p> }
+        @if (searchMessage()) { <p class="state">{{ searchMessage() }}</p> }
+        @if (results().length) {
+          <ul class="people">
+            @for (user of results(); track user.id) {
+              <li class="person">
+                <span class="avatar" aria-hidden="true">{{ initial(user.name) }}</span>
+                <span class="info"><a [routerLink]="['/u', user.id]"><strong>{{ user.name }}</strong></a></span>
+                <span class="actions">
+                  @switch (user.relation) {
+                    @case ('friend') { <span class="tag"><app-icon name="check" /> Ami(e)</span> }
+                    @case ('outgoing') { <span class="tag">Invitation envoyée</span> }
+                    @case ('incoming') {
+                      <button type="button" class="btn small primary" (click)="acceptFromSearch(user)" [disabled]="busy() === user.id"><app-icon name="check" /> Accepter son invitation</button>
+                    }
+                    @default {
+                      <button type="button" class="btn small primary" (click)="invite(user)" [disabled]="busy() === user.id"><app-icon name="user-plus" /> Inviter</button>
+                    }
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+
+    <!-- ======================= Bloqués ======================= -->
+    @case ('blocked') {
+      <section class="panel" aria-labelledby="blocked-title">
+        <h2 id="blocked-title">Comptes bloqués</h2>
+        <p class="help"><app-icon name="info" /> Une personne bloquée ne peut ni vous inviter, ni vous écrire, ni vous trouver dans la recherche. Elle n’est pas prévenue.</p>
+        @if (blockedError()) {
+          <div class="state error" role="alert">{{ blockedError() }} <button type="button" class="link" (click)="loadBlocked()">Réessayer</button></div>
+        } @else if (blocked() === null) {
+          <p class="state" role="status">Chargement…</p>
+        } @else if (!blocked()!.length) {
+          <p class="state">Vous n’avez bloqué personne.</p>
+        } @else {
+          <ul class="people">
+            @for (item of blocked(); track item.user.id) {
+              <li class="person">
+                <span class="avatar muted" aria-hidden="true">{{ initial(item.user.name) }}</span>
+                <span class="info"><strong>{{ item.user.name }}</strong><small>Bloqué(e) le {{ date(item.blockedAt) }}</small></span>
+                <span class="actions"><button type="button" class="btn small ghost" (click)="unblock(item.user)" [disabled]="busy() === item.user.id">Débloquer</button></span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+  }
+</section>

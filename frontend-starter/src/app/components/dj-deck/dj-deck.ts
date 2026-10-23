@@ -17,7 +17,7 @@ import { IconComponent } from '../icon/icon';
 export class DjDeckComponent {
   readonly engine = inject(DjEngineService);
   readonly deckId = input.required<DeckId>();
-  readonly color = input('#2ee6c5');
+  readonly color = input('#007fff');
 
   readonly deck = computed(() => this.engine.deck(this.deckId()));
   readonly displayTitle = displayTitle;

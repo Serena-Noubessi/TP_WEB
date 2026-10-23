@@ -13,8 +13,8 @@ import { DjKnobComponent } from '../dj-knob/dj-knob';
 export class DjMixerComponent {
   readonly engine = inject(DjEngineService);
   readonly channels: { id: DeckId; color: string }[] = [
-    { id: 'A', color: '#2ee6c5' },
-    { id: 'B', color: '#ff5fa2' },
+    { id: 'A', color: '#007fff' },
+    { id: 'B', color: '#a99bef' },
   ];
   readonly bands: { band: EqBand; label: string }[] = [
     { band: 'high', label: 'Aigus' },

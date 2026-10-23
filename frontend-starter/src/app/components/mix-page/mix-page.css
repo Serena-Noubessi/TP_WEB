@@ -1,15 +1,8 @@
 /*
- * La console a besoin de plus de largeur que les autres pages (1050 px).
- * Élargissement par marges négatives et non par transform : un transform
- * ferait de :host le référentiel du canvas fixe du fond animé, qui ne
- * couvrirait alors plus la fenêtre.
+ * Pas de transform sur :host : il ferait de :host le référentiel du canvas
+ * fixe du fond animé, qui ne couvrirait alors plus la fenêtre.
  */
-:host {
-  --console-width: min(1500px, calc(100vw - 2.5rem));
-  display: block;
-  width: var(--console-width);
-  margin-inline: calc((100% - var(--console-width)) / 2);
-}
+:host { display: block; width: 100%; }
 
 :host .mix-page {
   display: grid;
@@ -17,13 +10,13 @@
   gap: 1rem;
   padding: 1rem;
   border-radius: 20px;
-  color: #e4e8f0;
-  background: #0d0f13;
+  color: var(--mv-text);
+  background: var(--mv-bg);
 }
 
 /* Fond animé actif : la page devient transparente et les panneaux translucides. */
 :host .mix-page.has-visuals {
-  --dj-panel-bg: rgb(16 18 24 / 72%);
+  --dj-panel-bg: rgb(255 255 255 / 80%);
   --dj-panel-blur: blur(4px);
   background: transparent;
 }
@@ -37,7 +30,7 @@
   border-radius: 0;
 }
 
-:host .mix-page:fullscreen::backdrop { background: #000; }
+:host .mix-page:fullscreen::backdrop { background: rgb(24 50 79 / 18%); }
 
 :host .mix-hero {
   display: flex;
@@ -50,19 +43,19 @@
 
 :host .mix-hero h1 {
   margin: 0.2rem 0;
-  color: #f3f5f9;
+  color: var(--mv-text);
 }
 
 :host .mix-hero .mix-eyebrow {
   margin: 0;
-  color: #2ee6c5;
+  color: var(--mv-primary);
   font-size: 0.75rem;
   letter-spacing: 0.15em;
 }
 
 :host .mix-hero .mix-intro {
   margin: 0;
-  color: #9aa3b5;
+  color: var(--mv-muted);
 }
 
 :host .mix-hero button.autoplay {
@@ -70,21 +63,21 @@
   align-items: center;
   gap: 0.55rem;
   padding: 0.45rem 0.8rem;
-  border: 1px solid #353c4a;
+  border: 1px solid var(--mv-border);
   border-radius: 999px;
-  color: #c3c9d5;
-  background: rgb(26 30 38 / 80%);
+  color: var(--mv-text);
+  background: var(--mv-card);
   font-size: 0.82rem;
   cursor: pointer;
 }
 
 :host .mix-hero button.autoplay.is-on {
-  border-color: #2ee6c5;
-  color: #e4e8f0;
+  border-color: var(--mv-primary);
+  color: var(--mv-text);
 }
 
 :host .mix-hero button.autoplay:focus-visible {
-  outline: 2px solid #2ee6c5;
+  outline: 2px solid var(--mv-primary);
   outline-offset: 2px;
 }
 
@@ -94,11 +87,11 @@
   height: 1.15rem;
   padding: 0.15rem;
   border-radius: 999px;
-  background: #3a4150;
+  background: var(--mv-border);
   transition: background-color 160ms ease;
 }
 
-:host .autoplay.is-on .switch-track { background: #2ee6c5; }
+:host .autoplay.is-on .switch-track { background: var(--mv-primary); }
 
 :host .autoplay .switch-thumb {
   width: 0.85rem;
@@ -125,16 +118,16 @@
 
 :host .shortcuts dt {
   padding: 0.1rem 0.4rem;
-  border: 1px solid #353c4a;
+  border: 1px solid var(--mv-border);
   border-radius: 5px;
-  color: #e4e8f0;
+  color: var(--mv-text);
   font-family: ui-monospace, monospace;
   font-size: 0.75rem;
 }
 
 :host .shortcuts dd {
   margin: 0;
-  color: #9aa3b5;
+  color: var(--mv-muted);
   font-size: 0.8rem;
 }
 
@@ -153,7 +146,7 @@
   transition: outline-color 120ms ease;
 }
 
-:host .drop-zone.is-target { outline-color: #ffd60a; }
+:host .drop-zone.is-target { outline-color: var(--mv-warning); }
 
 @media (max-width: 1100px) {
   :host .console { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }

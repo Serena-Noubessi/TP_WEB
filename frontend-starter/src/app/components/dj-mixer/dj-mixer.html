@@ -16,7 +16,7 @@
         <app-dj-knob
           label="Filtre"
           [value]="deck.filter()"
-          color="#ffd60a"
+          color="var(--mv-warning)"
           [valueText]="filterText(deck.filter())"
           (valueChange)="deck.setFilter($event)"
         />
@@ -46,7 +46,7 @@
       [min]="0"
       [max]="1"
       [defaultValue]="0.9"
-      color="#ffffff"
+      color="var(--mv-text)"
       [valueText]="(engine.masterVolume() * 100).toFixed(0) + ' %'"
       (valueChange)="engine.setMasterVolume($event)"
     />

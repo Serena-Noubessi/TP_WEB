@@ -12,7 +12,7 @@ import { DeckEngine, SECONDS_PER_TURN } from '../../shared/audio/deck-engine';
 })
 export class DjJogWheelComponent {
   readonly deck = input.required<DeckEngine>();
-  readonly color = input('#2ee6c5');
+  readonly color = input('#007fff');
 
   private readonly platter = viewChild.required<ElementRef<HTMLElement>>('platter');
   private frame = 0;

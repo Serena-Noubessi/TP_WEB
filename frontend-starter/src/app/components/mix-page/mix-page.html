@@ -24,6 +24,8 @@
     </dl>
   </div>
 
+  <app-mix-project-bar class="project-bar" />
+
   <app-dj-visualizer #visuals [fullscreenTarget]="console" />
 
   <div class="console">
@@ -34,7 +36,7 @@
       (dragleave)="dragLeave('A')"
       (drop)="drop('A', $event)"
     >
-      <app-dj-deck deckId="A" color="#2ee6c5" />
+      <app-dj-deck deckId="A" color="#007fff" />
     </div>
 
     <app-dj-mixer class="console-mixer" />
@@ -46,7 +48,7 @@
       (dragleave)="dragLeave('B')"
       (drop)="drop('B', $event)"
     >
-      <app-dj-deck deckId="B" color="#ff5fa2" />
+      <app-dj-deck deckId="B" color="#a99bef" />
     </div>
   </div>
 

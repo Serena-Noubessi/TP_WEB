@@ -9,7 +9,7 @@
     </label>
     <label class="picker">
       <span><app-icon name="file-audio" size="1.3rem" /> Choisir des fichiers</span>
-      <input type="file" accept="audio/*" multiple (change)="choose($event)" [disabled]="running() || analysing()" />
+      <input type="file" [accept]="audioAccept" multiple (change)="choose($event)" [disabled]="running() || analysing()" />
     </label>
   </div>
 
@@ -24,7 +24,7 @@
       </p>
       <ul class="group-chips" aria-label="Répartition par catégorie">
         @for (group of groups(); track group.category?.id ?? 'aucune') {
-          <li [style.--chip-color]="group.category?.color ?? '#b8c4bf'">
+          <li [style.--chip-color]="group.category?.color ?? '#7d93ad'">
             <app-icon [name]="group.category?.icon ?? 'folder'" /> {{ group.category?.label ?? 'Non classé' }} <b>{{ group.count }}</b>
           </li>
         }

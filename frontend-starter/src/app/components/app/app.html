@@ -1,61 +1,117 @@
 <div class="app-shell" [class.dark-mode]="darkMode()">
-  <header class="site-header">
-    <a class="brand" routerLink="/tracks" aria-label="Accueil Guitar Practice Cloud">
-      <span class="brand-mark" aria-hidden="true"><app-icon name="music" /></span>
-      <span>
-        <b>Guitar Practice Cloud</b>
-        <small>Le cloud qui manque à votre ampli</small>
-      </span>
-    </a>
-
-    <app-mini-player />
-
-    <nav class="toolbar" aria-label="Navigation principale">
-      <a routerLink="/tracks" routerLinkActive="is-active" ariaCurrentWhenActive="page">
-        <span class="toolbar-icon" aria-hidden="true"><app-icon name="list-music" /></span>
-        <span>Backing tracks</span>
-      </a>
-      <a routerLink="/audio" routerLinkActive="is-active" ariaCurrentWhenActive="page">
-        <span class="toolbar-icon" aria-hidden="true"><app-icon name="audio-lines" /></span>
-        <span>Audio</span>
-      </a>
-      <a routerLink="/mix" routerLinkActive="is-active" ariaCurrentWhenActive="page">
-        <span class="toolbar-icon" aria-hidden="true"><app-icon name="sliders" /></span>
-        <span>Mixage</span>
-      </a>
-      <a routerLink="/profile" routerLinkActive="is-active" ariaCurrentWhenActive="page">
-        <span class="toolbar-icon" aria-hidden="true"><app-icon name="user" /></span>
-        <span>Profil</span>
+  <!-- Menu vertical (ordinateur) -->
+  <aside class="sidebar" aria-label="Navigation principale">
+    <div class="side-top">
+      <a class="brand" routerLink="/" aria-label="MOST VIBE, accueil">
+        <span class="logo" aria-hidden="true">MV</span>
+        <span class="brand-name">MOST VIBE</span>
       </a>
       @if (auth.token()) {
-        <button type="button" class="toolbar-action" (click)="logout()" aria-label="Se déconnecter" title="Se déconnecter">
-          <span class="toolbar-icon" aria-hidden="true"><app-icon name="log-out" /></span>
+        <span class="side-bell"><app-notification-bell align="left" /></span>
+      }
+    </div>
+
+    <nav class="side-nav">
+      @for (item of visibleItems(); track item.path) {
+        <a [routerLink]="item.path" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: item.path === '/' }" ariaCurrentWhenActive="page">
+          <app-icon [name]="item.icon" size="1.15rem" />
+          <span>{{ item.label }}</span>
+          @if (badge(item.path); as count) {
+            <span class="nav-badge" [attr.aria-label]="count + ' nouveau(x)'">{{ count > 9 ? '9+' : count }}</span>
+          }
+        </a>
+      }
+    </nav>
+
+    <div class="side-footer">
+      @if (auth.token()) {
+        <a class="account" routerLink="/profile" routerLinkActive="is-active">
+          <app-icon name="user" size="1.15rem" />
+          <span>Mon profil</span>
+        </a>
+        <button type="button" class="side-action" (click)="logout()">
+          <app-icon name="log-out" size="1.15rem" />
           <span>Déconnexion</span>
         </button>
       } @else {
-        <a routerLink="/login" routerLinkActive="is-active" ariaCurrentWhenActive="page">
-          <span class="toolbar-icon" aria-hidden="true"><app-icon name="log-in" /></span>
-          <span>Connexion</span>
+        <a class="side-cta" routerLink="/login">
+          <app-icon name="log-in" size="1.15rem" />
+          <span>Se connecter</span>
         </a>
+        <a class="side-link" routerLink="/register">Créer un compte</a>
       }
       <button
         type="button"
-        class="toolbar-action theme-toggle"
+        class="side-action theme-toggle"
         (click)="toggleTheme()"
-        [attr.aria-label]="darkMode() ? 'Passer en mode clair' : 'Passer en mode sombre'"
-        [attr.title]="darkMode() ? 'Passer en mode clair' : 'Passer en mode sombre'"
         [attr.aria-pressed]="darkMode()"
+        [attr.aria-label]="darkMode() ? 'Passer en thème clair' : 'Passer en thème sombre'"
       >
-        <span class="theme-switch" aria-hidden="true">
-          <span class="theme-sun"><app-icon name="sun" /></span>
-          <span class="theme-track"><span class="theme-thumb"></span></span>
-          <span class="theme-moon"><app-icon name="moon" /></span>
-        </span>
+        <app-icon [name]="darkMode() ? 'sun' : 'moon'" size="1.15rem" />
+        <span>{{ darkMode() ? 'Thème clair' : 'Thème sombre' }}</span>
       </button>
-    </nav>
+    </div>
+  </aside>
+
+  <!-- En-tête compact (mobile) -->
+  <header class="mobile-top">
+    <a class="brand" routerLink="/" aria-label="MOST VIBE, accueil">
+      <span class="logo" aria-hidden="true">MV</span>
+      <span class="brand-name">MOST VIBE</span>
+    </a>
+    @if (!auth.token()) {
+      <a class="mobile-login" routerLink="/login">Se connecter</a>
+    } @else {
+      <app-notification-bell />
+    }
   </header>
 
-  <main>
+  <main id="contenu">
     <router-outlet />
   </main>
+
+  <app-player-bar />
+
+  @if (reactions.flash()) {
+    <p class="toast" role="status">{{ reactions.flash() }}</p>
+  }
+
+  <!-- Barre de navigation (mobile) -->
+  <nav class="bottom-nav" aria-label="Navigation principale (mobile)">
+    @for (item of mobileItems(); track item.path) {
+      <a [routerLink]="item.path" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: item.path === '/' }" ariaCurrentWhenActive="page">
+        <app-icon [name]="item.icon" size="1.3rem" />
+        <span>{{ item.label === 'Ma bibliothèque' ? 'Biblio' : item.label }}</span>
+        @if (badge(item.path); as count) {
+          <span class="nav-badge" [attr.aria-label]="count + ' nouveau(x)'">{{ count > 9 ? '9+' : count }}</span>
+        }
+      </a>
+    }
+    <button type="button" class="more-button" [attr.aria-expanded]="moreOpen()" aria-controls="more-menu" (click)="moreOpen.set(!moreOpen())">
+      <app-icon name="more" size="1.3rem" />
+      <span>Plus</span>
+      @if (moreBadge(); as count) {
+        <span class="nav-badge" [attr.aria-label]="count + ' nouveau(x)'">{{ count > 9 ? '9+' : count }}</span>
+      }
+    </button>
+  </nav>
+
+  @if (moreOpen()) {
+    <div class="more-backdrop" (click)="moreOpen.set(false)" aria-hidden="true"></div>
+    <div id="more-menu" class="more-sheet" role="menu" aria-label="Plus de pages">
+      @for (item of moreItems(); track item.path) {
+        <a role="menuitem" [routerLink]="item.path" (click)="moreOpen.set(false)">
+          <app-icon [name]="item.icon" size="1.2rem" /> {{ item.label }}
+          @if (badge(item.path); as count) { <span class="nav-badge">{{ count }}</span> }
+        </a>
+      }
+      @if (auth.token()) {
+        <a role="menuitem" routerLink="/profile" (click)="moreOpen.set(false)"><app-icon name="user" size="1.2rem" /> Mon profil</a>
+        <button type="button" role="menuitem" (click)="logout()"><app-icon name="log-out" size="1.2rem" /> Déconnexion</button>
+      } @else {
+        <a role="menuitem" routerLink="/register" (click)="moreOpen.set(false)"><app-icon name="user" size="1.2rem" /> Créer un compte</a>
+      }
+      <button type="button" role="menuitem" (click)="toggleTheme()"><app-icon [name]="darkMode() ? 'sun' : 'moon'" size="1.2rem" /> {{ darkMode() ? 'Thème clair' : 'Thème sombre' }}</button>
+    </div>
+  }
 </div>

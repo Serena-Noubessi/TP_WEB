@@ -1,5 +1,15 @@
 # Guitar Practice Cloud — package étudiant
 
+> **MOST VIBE** — Ce projet a été transformé en mini réseau social de partage audio (mission MOST VIBE).
+> À lire en priorité :
+> - [LIVRABLES_MOST_VIBE.md](LIVRABLES_MOST_VIBE.md) : résumé des fonctionnalités, tests et résultats, services à configurer, mise en ligne ;
+> - [TESTS_MOST_VIBE.md](TESTS_MOST_VIBE.md) : liste de contrôle (comptes A, B, C) et tests qui couvrent chaque point ;
+> - [tests-navigateur/README.md](tests-navigateur/README.md) : recette dans le navigateur en une commande ;
+> - [API_CONTRACT.md](API_CONTRACT.md) et [RAPPORT_IA.md](RAPPORT_IA.md) : routes de l'API et journal daté des demandes.
+>
+> Démonstration avec les comptes A, B et C : `cd backend && npm run demo:seed && npm run demo:start`, puis
+> `node tests-navigateur/serveur-test.mjs` et http://localhost:4300 (mot de passe `MotDePasse123`).
+
 Ce dépôt contient uniquement les ressources nécessaires aux trois TP :
 `backend/` et `frontend-starter/`, ainsi que les sujets et documents utiles.
 

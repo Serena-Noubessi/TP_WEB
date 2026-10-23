@@ -15,7 +15,7 @@ export class DjKnobComponent {
   readonly min = input(-1);
   readonly max = input(1);
   readonly defaultValue = input(0);
-  readonly color = input('#2ee6c5');
+  readonly color = input('#007fff');
   readonly valueText = input('');
   readonly valueChange = output<number>();
 

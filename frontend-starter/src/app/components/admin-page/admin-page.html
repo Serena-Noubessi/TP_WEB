@@ -1,0 +1,187 @@
+<section class="admin">
+  <header class="head">
+    <p class="eyebrow"><app-icon name="shield" /> Administration</p>
+    <h1>Espace d’administration</h1>
+    <p class="scope"><app-icon name="lock" /> Vous agissez sur les signalements, les comptes et les contenus <strong>publics</strong>. Les pistes privées et les conversations restent inaccessibles, y compris pour l’administration.</p>
+  </header>
+
+  @if (forbidden()) {
+    <div class="state error" role="alert">
+      Cet espace est réservé à l’administration. <a routerLink="/">Retour à l’accueil</a>
+    </div>
+  } @else {
+    <nav class="tabs" role="tablist" aria-label="Rubriques d’administration">
+      @for (item of tabs; track item.id) {
+        <button type="button" role="tab" class="tab" [class.active]="tab() === item.id" [attr.aria-selected]="tab() === item.id" (click)="selectTab(item.id)">
+          <app-icon [name]="item.icon" /> {{ item.label }}
+        </button>
+      }
+    </nav>
+
+    @if (flash()) { <p class="flash" role="status"><app-icon name="check" /> {{ flash() }}</p> }
+    @if (error()) { <p class="state error" role="alert">{{ error() }}</p> }
+
+    @switch (tab()) {
+      <!-- ======================= Tableau de bord ======================= -->
+      @case ('overview') {
+        @if (overview(); as o) {
+          <div class="stats">
+            <button type="button" class="stat alert" (click)="selectTab('reports')"><strong>{{ o.openReports }}</strong><span>signalement(s) à traiter</span></button>
+            <button type="button" class="stat" (click)="selectTab('users')"><strong>{{ o.users }}</strong><span>compte(s), dont {{ o.suspended }} suspendu(s)</span></button>
+            <button type="button" class="stat" (click)="selectTab('tracks')"><strong>{{ o.publicTracks }}</strong><span>piste(s) publique(s)</span></button>
+            <div class="stat muted"><strong>{{ o.tracks }}</strong><span>piste(s) au total (privées comprises, non consultables)</span></div>
+          </div>
+        } @else {
+          @if (!error()) { <p class="state" role="status">Chargement…</p> }
+        }
+      }
+
+      <!-- ======================= Signalements ======================= -->
+      @case ('reports') {
+        <div class="filters" role="group" aria-label="Filtrer les signalements">
+          @for (filter of ['open', 'resolved', 'dismissed', 'all']; track filter) {
+            <button type="button" class="chip" [class.active]="reportFilter() === filter" (click)="loadReports($any(filter))">
+              {{ filter === 'open' ? 'À traiter' : filter === 'resolved' ? 'Traités' : filter === 'dismissed' ? 'Classés' : 'Tous' }}
+            </button>
+          }
+        </div>
+        @if (reports() === null) {
+          @if (!error()) { <p class="state" role="status">Chargement…</p> }
+        } @else if (!reports()!.length) {
+          <div class="empty"><app-icon name="check" size="2rem" /><p>Aucun signalement dans cette catégorie.</p></div>
+        } @else {
+          <ul class="cards">
+            @for (report of reports(); track report.id) {
+              <li class="report">
+                <div class="report-head">
+                  <span class="reason">{{ reasons.get(report.reason) }}</span>
+                  <small>Signalé par {{ report.reporter.name }} le {{ date(report.createdAt) }}</small>
+                </div>
+                <p class="target">
+                  @if (report.targetType === 'user') {
+                    Profil : <a [routerLink]="['/u', report.owner.id]">{{ report.owner.name }}</a>
+                  } @else if (report.track?.deleted) {
+                    Piste supprimée (auteur : {{ report.owner.name }})
+                  } @else if (report.track?.hidden) {
+                    <app-icon name="lock" /> Piste devenue non publique ({{ report.track!.visibility }}) : hors de portée de l’administration. Auteur : {{ report.owner.name }}
+                  } @else {
+                    Piste : <strong>« {{ report.track?.title }} »</strong> de {{ report.owner.name }}
+                  }
+                  @if (report.owner.suspended) { <span class="tag danger">compte suspendu</span> }
+                </p>
+                @if (report.details) { <blockquote>{{ report.details }}</blockquote> }
+
+                @if (report.status === 'open') {
+                  @let canModerate = report.targetType === 'track' && !report.track?.hidden && !report.track?.deleted;
+                  <label class="note">Note (facultative, gardée avec la décision)
+                    <input #note type="text" maxlength="500" placeholder="Ex. : droits non vérifiés" />
+                  </label>
+                  @if (confirm()?.id === report.id) {
+                    <div class="confirm" role="alertdialog" aria-label="Confirmer la décision">
+                      <span>Confirmer : <strong>{{ actionLabel(confirm()!.action) }}</strong> ?</span>
+                      <button type="button" class="btn small danger" (click)="resolve(report, $any(confirm()!.action), note.value)" [disabled]="busy() === report.id">Confirmer</button>
+                      <button type="button" class="btn small ghost" (click)="confirm.set(null)">Annuler</button>
+                    </div>
+                  } @else {
+                    <div class="actions">
+                      <button type="button" class="btn small ghost" (click)="resolve(report, 'dismiss', note.value)" [disabled]="busy() === report.id">Classer sans suite</button>
+                      @if (canModerate) {
+                        <button type="button" class="btn small ghost" (click)="confirm.set({ id: report.id, action: 'unpublish' })"><app-icon name="eye-off" /> Dépublier</button>
+                        <button type="button" class="btn small ghost" (click)="confirm.set({ id: report.id, action: 'delete' })"><app-icon name="trash" /> Supprimer</button>
+                      }
+                      @if (!report.owner.suspended) {
+                        <button type="button" class="btn small danger-ghost" (click)="confirm.set({ id: report.id, action: 'suspend' })"><app-icon name="ban" /> Suspendre l’auteur</button>
+                      }
+                    </div>
+                  }
+                } @else {
+                  <p class="decision">
+                    Décision du {{ date(report.handledAt) }} :
+                    <strong>{{ report.action === 'none' ? 'classé sans suite' : report.action === 'unpublished' ? 'piste dépubliée' : report.action === 'deleted' ? 'piste supprimée' : 'compte suspendu' }}</strong>
+                    @if (report.note) { — {{ report.note }} }
+                  </p>
+                }
+              </li>
+            }
+          </ul>
+        }
+      }
+
+      <!-- ======================= Utilisateurs ======================= -->
+      @case ('users') {
+        <form class="search" role="search" (submit)="$event.preventDefault(); searchUsers(userQuery.value)">
+          <app-icon name="search" />
+          <input #userQuery type="search" placeholder="Nom ou email…" aria-label="Chercher un compte par nom ou email" />
+        </form>
+        @if (users() === null) {
+          @if (!error()) { <p class="state" role="status">Chargement…</p> }
+        } @else if (!users()!.length) {
+          <p class="state">Aucun compte ne correspond.</p>
+        } @else {
+          <ul class="cards">
+            @for (user of users(); track user.id) {
+              <li class="user" [class.suspended]="user.suspendedAt">
+                <div class="user-head">
+                  <span><strong>{{ user.name }}</strong> @if (user.role === 'admin') { <span class="tag">admin</span> }<small>{{ user.email }} · inscrit le {{ date(user.createdAt) }}</small></span>
+                  <span class="counts">{{ user.tracks }} piste(s), {{ user.publicTracks }} publique(s) · <span [class.alert-text]="user.openReports">{{ user.openReports }} signalement(s)</span></span>
+                </div>
+                @if (user.suspendedAt) {
+                  <p class="decision"><app-icon name="ban" /> Suspendu le {{ date(user.suspendedAt) }} : {{ user.suspendedReason }}</p>
+                  <button type="button" class="btn small ghost" (click)="unsuspend(user)" [disabled]="busy() === user.id">Lever la suspension</button>
+                } @else if (user.role !== 'admin') {
+                  @if (confirm()?.id === user.id) {
+                    <div class="confirm">
+                      <input #reason type="text" maxlength="300" placeholder="Raison (montrée à la personne)" aria-label="Raison de la suspension" />
+                      <button type="button" class="btn small danger" (click)="suspend(user, reason.value)" [disabled]="busy() === user.id">Suspendre</button>
+                      <button type="button" class="btn small ghost" (click)="confirm.set(null)">Annuler</button>
+                    </div>
+                  } @else {
+                    <button type="button" class="btn small danger-ghost" (click)="confirm.set({ id: user.id, action: 'suspend' })"><app-icon name="ban" /> Suspendre…</button>
+                  }
+                }
+              </li>
+            }
+          </ul>
+        }
+      }
+
+      <!-- ======================= Contenus publics ======================= -->
+      @case ('tracks') {
+        <form class="search" role="search" (submit)="$event.preventDefault(); searchTracks(trackQuery.value)">
+          <app-icon name="search" />
+          <input #trackQuery type="search" placeholder="Titre d’une piste publique…" aria-label="Chercher une piste publique" />
+        </form>
+        @if (tracks() === null) {
+          @if (!error()) { <p class="state" role="status">Chargement…</p> }
+        } @else if (!tracks()!.length) {
+          <p class="state">Aucune piste publique ne correspond.</p>
+        } @else {
+          <ul class="cards">
+            @for (track of tracks(); track track.id) {
+              <li class="content">
+                <button type="button" class="play" (click)="play(track)" [attr.aria-label]="'Écouter ' + track.title"><app-icon [name]="isPlaying(track) ? 'pause' : 'play'" /></button>
+                <span class="info">
+                  <strong>{{ track.title }}</strong>
+                  <small>{{ track.author?.name }} · {{ track.kind === 'mix' ? 'mixage' : 'piste' }} · {{ date(track.createdAt) }}</small>
+                </span>
+                @if (track.openReports) { <span class="tag danger">{{ track.openReports }} signalement(s)</span> }
+                @if (confirm()?.id === track.id) {
+                  <span class="confirm">
+                    {{ confirm()!.action === 'delete' ? 'Supprimer définitivement ?' : 'Dépublier (rendre privée) ?' }}
+                    <button type="button" class="btn small danger" (click)="confirm()!.action === 'delete' ? deleteTrack(track) : unpublish(track)" [disabled]="busy() === track.id">Confirmer</button>
+                    <button type="button" class="btn small ghost" (click)="confirm.set(null)">Annuler</button>
+                  </span>
+                } @else {
+                  <span class="actions">
+                    <button type="button" class="btn small ghost" (click)="confirm.set({ id: track.id, action: 'unpublish' })"><app-icon name="eye-off" /> Dépublier</button>
+                    <button type="button" class="btn small ghost" (click)="confirm.set({ id: track.id, action: 'delete' })"><app-icon name="trash" /> Supprimer</button>
+                  </span>
+                }
+              </li>
+            }
+          </ul>
+        }
+      }
+    }
+  }
+</section>

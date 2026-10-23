@@ -1,0 +1,73 @@
+<section class="explore">
+  <div class="head">
+    <p class="eyebrow">DÉCOUVRIR</p>
+    <h1>Explorer</h1>
+    <p class="muted">Seuls les contenus publics apparaissent ici. Aucun compte n’est nécessaire pour écouter.</p>
+  </div>
+
+  <form class="search" [formGroup]="form" (submit)="submit($event)" role="search">
+    <label class="search-field">
+      <span class="sr-only">Rechercher</span>
+      <app-icon name="search" size="1.15rem" />
+      <input type="search" formControlName="q" placeholder="Titre, auteur, album ou tag…" />
+    </label>
+    <button type="submit">Rechercher</button>
+    <button type="button" class="ghost" [attr.aria-expanded]="showFilters()" aria-controls="filters" (click)="showFilters.set(!showFilters())">Filtres</button>
+  </form>
+
+  @if (showFilters()) {
+    <div id="filters" class="filters" [formGroup]="form">
+      <label>Auteur<input formControlName="author" placeholder="Nom de l’auteur" (keydown.enter)="submit($event)" /></label>
+      <label>Album<input formControlName="album" placeholder="Nom de l’album" (keydown.enter)="submit($event)" /></label>
+      <label>Tag<input formControlName="tag" placeholder="ex. été" (keydown.enter)="submit($event)" /></label>
+      <label>Tri
+        <select formControlName="sort" (change)="submit($event)">
+          <option value="recent">Plus récents</option>
+          <option value="title">Titre (A → Z)</option>
+        </select>
+      </label>
+    </div>
+  }
+
+  <div class="chips" role="toolbar" aria-label="Filtrer par style">
+    <button type="button" class="chip" [class.is-on]="!style()" [attr.aria-pressed]="!style()" (click)="selectStyle('')">Tous les styles</button>
+    @for (category of categories; track category.id) {
+      <button type="button" class="chip" [class.is-on]="style() === category.id" [attr.aria-pressed]="style() === category.id" (click)="selectStyle(category.id)" [style.--cat]="category.color">
+        <app-icon [name]="category.icon" /> {{ category.label }}
+      </button>
+    }
+  </div>
+  <div class="chips" role="toolbar" aria-label="Filtrer par type">
+    <button type="button" class="chip" [class.is-on]="kind() === ''" (click)="selectKind('')">Tout</button>
+    <button type="button" class="chip" [class.is-on]="kind() === 'track'" (click)="selectKind('track')">Pistes</button>
+    <button type="button" class="chip" [class.is-on]="kind() === 'mix'" (click)="selectKind('mix')">Mixages</button>
+  </div>
+
+  @if (error()) {
+    <div class="state error" role="alert">{{ error() }}</div>
+  } @else if (loading()) {
+    <p class="state" role="status">Recherche…</p>
+  } @else {
+    <p class="count" role="status">{{ total() }} résultat(s)</p>
+    <div class="tiles">
+      @for (track of results(); track track.id; let i = $index) {
+        <app-track-tile [track]="track" (play)="play(i)" />
+      } @empty {
+        <div class="empty">
+          <app-icon name="search" size="2rem" />
+          <p>Aucun contenu public ne correspond à cette recherche.</p>
+          @if (activeFilters()) {
+            <button type="button" class="ghost" (click)="reset()">Effacer les filtres</button>
+          }
+        </div>
+      }
+    </div>
+    @if (pages() > 1) {
+      <nav class="pager" aria-label="Pages de résultats">
+        <button type="button" class="ghost" (click)="go(page() - 1)" [disabled]="page() <= 1">Préc.</button>
+        <span>Page {{ page() }} / {{ pages() }}</span>
+        <button type="button" class="ghost" (click)="go(page() + 1)" [disabled]="page() >= pages()">Suiv.</button>
+      </nav>
+    }
+  }
+</section>

@@ -1,0 +1,143 @@
+<section class="messages" [class.has-thread]="activeId()">
+  <!-- ======================= Conversations ======================= -->
+  <aside class="list" aria-labelledby="conv-title">
+    <header class="list-head">
+      <h1 id="conv-title">Messages</h1>
+      <a class="new" routerLink="/friends" [queryParams]="{ tab: 'friends' }" title="Écrire à un ami"><app-icon name="pencil" /> Nouveau</a>
+    </header>
+    @if (listError()) {
+      <p class="state error" role="alert">{{ listError() }} <button type="button" class="link" (click)="loadConversations()">Réessayer</button></p>
+    } @else if (conversations() === null) {
+      <p class="state" role="status">Chargement…</p>
+    } @else if (!conversations()!.length) {
+      <div class="empty">
+        <app-icon name="message" size="2rem" />
+        <p>Aucune conversation. La messagerie est réservée à vos amis : ouvrez « Amis » et choisissez « Écrire ».</p>
+        <a class="btn primary" routerLink="/friends" [queryParams]="{ tab: 'friends' }">Voir mes amis</a>
+      </div>
+    } @else {
+      <ul class="conversations">
+        @for (conversation of conversations(); track conversation.id) {
+          <li>
+            <button type="button" class="conversation" [class.active]="activeId() === conversation.id" [class.unread]="conversation.unread" (click)="select(conversation)"
+              [attr.aria-current]="activeId() === conversation.id ? 'true' : null">
+              <span class="avatar" aria-hidden="true">{{ conversation.other.name.charAt(0).toUpperCase() }}</span>
+              <span class="conv-text">
+                <strong>{{ conversation.other.name }}</strong>
+                <small>{{ preview(conversation) }}</small>
+              </span>
+              @if (conversation.unread) {
+                <span class="unread-badge" [attr.aria-label]="conversation.unread + ' message(s) non lu(s)'">{{ conversation.unread }}</span>
+              }
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </aside>
+
+  <!-- ======================= Conversation ouverte ======================= -->
+  <section class="thread" aria-live="polite">
+    @if (!activeId()) {
+      <div class="placeholder">
+        <app-icon name="message" size="2.4rem" />
+        <p>Choisissez une conversation, ou écrivez à un ami depuis la page « Amis ».</p>
+      </div>
+    } @else if (threadError()) {
+      <div class="placeholder">
+        <p class="state error" role="alert">{{ threadError() }}</p>
+        <button type="button" class="btn ghost" (click)="backToList()">Retour aux conversations</button>
+      </div>
+    } @else if (!thread()) {
+      <p class="state" role="status">Chargement de la conversation…</p>
+    } @else {
+      @let t = thread()!;
+      <header class="thread-head">
+        <button type="button" class="icon-btn back" (click)="backToList()" aria-label="Retour aux conversations"><app-icon name="arrow-right" /></button>
+        <span class="avatar" aria-hidden="true">{{ t.other.name.charAt(0).toUpperCase() }}</span>
+        <a class="other" [routerLink]="['/u', t.other.id]">{{ t.other.name }}</a>
+      </header>
+
+      <div #scroller class="scroller">
+        @if (t.hasMore) {
+          <button type="button" class="link older" (click)="loadOlder()" [disabled]="loadingOlder()">{{ loadingOlder() ? 'Chargement…' : 'Messages précédents' }}</button>
+        }
+        @for (message of t.messages; track message.id) {
+          <div class="bubble-row" [class.mine]="message.fromMe">
+            <div class="bubble">
+              @if (message.track; as card) {
+                @if (card.status === 'ok') {
+                  @let track = asTrack(card);
+                  @let category = categoryOf(track);
+                  <article class="card" [style.--cat]="category.color" aria-label="Carte musicale">
+                    <span class="card-art">
+                      <app-cover-image [url]="track.coverUrl" [direct]="track.visibility === 'public'" alt="">
+                        <app-icon [name]="category.icon" size="1.6rem" />
+                      </app-cover-image>
+                    </span>
+                    <span class="card-info">
+                      <strong>{{ displayTitle(track) }}</strong>
+                      <small>{{ track.author?.name }} · {{ category.label }} · {{ formatDuration(track.durationSeconds) }}</small>
+                      @if (message.fromMe && track.recipientAccess === 'revoked') {
+                        <small class="revoked"><app-icon name="lock" /> Accès retiré à {{ t.other.name }}</small>
+                      }
+                    </span>
+                    <button type="button" class="card-play" (click)="playCard(card)" [attr.aria-label]="(isPlaying(card) ? 'Pause : ' : 'Écouter : ') + displayTitle(track)">
+                      <app-icon [name]="isPlaying(card) ? 'pause' : 'play'" />
+                    </button>
+                  </article>
+                } @else {
+                  <article class="card interrupted" aria-label="Carte musicale indisponible">
+                    <span class="card-art"><app-icon name="lock" size="1.4rem" /></span>
+                    <span class="card-info">
+                      <strong>{{ card.status === 'deleted' ? 'Piste supprimée' : 'Partage interrompu' }}</strong>
+                      <small>
+                        @if (card.status === 'deleted') {
+                          Cette piste n’existe plus.
+                        } @else {
+                          « {{ cardTitle(card) }} » : l’auteur a retiré l’accès à cette piste.
+                        }
+                      </small>
+                    </span>
+                  </article>
+                }
+              }
+              @if (message.text) { <p class="text">{{ message.text }}</p> }
+              <small class="meta">
+                {{ time(message.createdAt) }}
+                @if (lastSeenId() === message.id) { · Vu }
+              </small>
+            </div>
+          </div>
+        } @empty {
+          <p class="state centered">Aucun message pour l’instant. Dites bonjour, ou envoyez une de vos pistes.</p>
+        }
+      </div>
+
+      @if (t.canSend) {
+        <form class="composer" (submit)="$event.preventDefault(); sendText()">
+          <button type="button" class="icon-btn attach" (click)="pickerOpen.set(true)" [disabled]="sending()" title="Envoyer une de mes pistes" aria-label="Envoyer une de mes pistes">
+            <app-icon name="music" />
+          </button>
+          <label class="sr-only" for="composer-text">Votre message</label>
+          <textarea id="composer-text" rows="1" maxlength="2000" placeholder="Écrire un message…" [value]="draft()" (input)="draft.set($any($event.target).value)" (keydown)="onKeydown($event)"></textarea>
+          <button type="submit" class="send" [disabled]="sending() || !draft().trim()">{{ sending() ? 'Envoi…' : 'Envoyer' }}</button>
+        </form>
+        @if (sendError()) { <p class="state error composer-error" role="alert">{{ sendError() }}</p> }
+      } @else {
+        <p class="readonly" role="status">
+          <app-icon name="lock" />
+          @if (t.reason === 'blocked') {
+            Vous ne pouvez plus échanger avec cette personne (blocage). L’historique reste lisible.
+          } @else {
+            Vous n’êtes plus amis : la conversation est en lecture seule.
+          }
+        </p>
+      }
+    }
+  </section>
+</section>
+
+@if (pickerOpen()) {
+  <app-track-picker (picked)="sendTrack($event)" (closed)="pickerOpen.set(false)" />
+}

@@ -5,9 +5,9 @@
   gap: 0.75rem;
   height: 100%;
   padding: 0.9rem;
-  border: 1px solid #2a303c;
+  border: 1px solid var(--mv-border);
   border-radius: 14px;
-  background: var(--dj-panel-bg, linear-gradient(180deg, #1a1e26, #13161c));
+  background: var(--dj-panel-bg, linear-gradient(180deg, var(--mv-card), var(--mv-card)));
   backdrop-filter: var(--dj-panel-blur, none);
 }
 
@@ -24,7 +24,7 @@
   height: 2rem;
   place-items: center;
   border-radius: 8px;
-  color: #0d0f13;
+  color: var(--mv-on-accent);
   background: var(--deck-color);
   font-weight: 800;
 }
@@ -36,14 +36,14 @@
 
 :host .deck-title strong {
   overflow: hidden;
-  color: #f3f5f9;
+  color: var(--mv-text);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 :host .deck-title small,
 :host .deck-bpm small {
-  color: #9aa3b5;
+  color: var(--mv-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -63,7 +63,7 @@
 
 :host .deck .deck-error {
   margin: 0;
-  color: #ff8a9b;
+  color: var(--mv-danger);
 }
 
 :host .deck-body {
@@ -98,17 +98,17 @@
 }
 
 :host .pitch .pitch-value {
-  color: #d7dce6;
+  color: var(--mv-text);
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
 }
 
 :host .pitch select {
   padding: 0.2rem;
-  border: 1px solid #353c4a;
+  border: 1px solid var(--mv-border);
   border-radius: 6px;
-  color: #d7dce6;
-  background: #0f1116;
+  color: var(--mv-text);
+  background: var(--mv-inset);
   font-size: 0.72rem;
 }
 
@@ -127,7 +127,7 @@
 
 :host .pads .pads-label {
   width: 4.5rem;
-  color: #9aa3b5;
+  color: var(--mv-muted);
   font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -136,9 +136,9 @@
 
 :host .deck button.pad,
 :host .deck button.mini {
-  border: 1px solid #353c4a;
-  color: #e4e8f0;
-  background: #232833;
+  border: 1px solid var(--mv-border);
+  color: var(--mv-text);
+  background: var(--mv-control);
   font-weight: 700;
   cursor: pointer;
 }
@@ -158,7 +158,7 @@
 :host .deck button.pad:hover:not(:disabled),
 :host .deck button.mini:hover:not(:disabled) {
   border-color: var(--deck-color);
-  background: #2c3240;
+  background: var(--mv-control-hover);
 }
 
 :host .deck button.pad:focus-visible,
@@ -175,15 +175,15 @@
 :host .deck button.pad.sync.is-on,
 :host .deck button.pad.loop.is-on {
   border-color: var(--deck-color);
-  color: #0d0f13;
+  color: var(--mv-on-accent);
   background: var(--deck-color);
 }
 
-:host .deck button.pad.cue { color: #ffd60a; }
+:host .deck button.pad.cue { color: var(--mv-warning); }
 
 :host .deck button.pad.hot.is-set {
   border-color: #ff9f1c;
-  color: #0d0f13;
+  color: var(--mv-on-accent);
   background: #ff9f1c;
 }
 

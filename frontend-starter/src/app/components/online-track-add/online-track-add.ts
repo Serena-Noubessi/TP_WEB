@@ -43,7 +43,7 @@ export class OnlineTrackAddComponent {
   readonly licenses = LICENSE_CHOICES;
   readonly categories = CATEGORIES;
   /** Catégorie donnée aux morceaux ajoutés (lien direct ou catalogue). */
-  readonly category = new FormControl('autre', { nonNullable: true });
+  readonly category = new FormControl('autres', { nonNullable: true });
 
   // Téléchargement en cours (commun aux deux modes : un seul à la fois).
   readonly busyLabel = signal('');

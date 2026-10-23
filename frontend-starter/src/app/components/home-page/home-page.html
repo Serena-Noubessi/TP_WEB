@@ -1,0 +1,118 @@
+<section class="home">
+  <div class="hero-mv">
+    <div>
+      <p class="eyebrow">MOST VIBE</p>
+      <h1>Partagez vos sons, vos mixes et vos remixes.</h1>
+      <p class="lead">Écoutez les créations publiques de la communauté, sans compte. Connectez-vous pour publier, mixer et partager avec vos amis.</p>
+      <div class="hero-actions">
+        <a class="btn primary" routerLink="/explore"><app-icon name="compass" /> Explorer</a>
+        @if (auth.token()) {
+          <a class="btn ghost" routerLink="/tracks"><app-icon name="list-music" /> Publier une piste</a>
+        } @else {
+          <a class="btn ghost" routerLink="/register">Créer un compte</a>
+        }
+      </div>
+    </div>
+    <span class="hero-logo" aria-hidden="true">MV</span>
+  </div>
+
+  @if (loading()) {
+    <p class="state" role="status">Chargement des contenus publics…</p>
+  } @else if (error()) {
+    <div class="state error" role="alert">
+      <p>{{ error() }}</p>
+      <button type="button" (click)="load()">Réessayer</button>
+    </div>
+  } @else if (home(); as data) {
+    <section class="block" aria-labelledby="styles-title">
+      <h2 id="styles-title">Par style</h2>
+      <div class="styles">
+        @for (category of categories; track category.id) {
+          <a class="style-chip" [routerLink]="['/explore']" [queryParams]="{ style: category.id }" [style.--cat]="category.color">
+            <app-icon [name]="category.icon" size="1.3rem" />
+            <span>{{ category.label }}</span>
+            <small>{{ data.styles[category.id] ?? 0 }}</small>
+          </a>
+        }
+      </div>
+    </section>
+
+    @if (!totalPublic()) {
+      <div class="empty" role="status">
+        <app-icon name="globe" size="2rem" />
+        <h2>Aucun contenu public pour le moment</h2>
+        <p>Les pistes sont privées par défaut. Quand un membre rend une piste publique, elle apparaît ici pour tout le monde.</p>
+        @if (auth.token()) {
+          <a class="btn primary" routerLink="/tracks">Publier une de mes pistes</a>
+        } @else {
+          <a class="btn primary" routerLink="/register">Créer un compte pour publier</a>
+        }
+      </div>
+    } @else {
+      <section class="block" aria-labelledby="recent-title">
+        <div class="block-head">
+          <h2 id="recent-title">Ajouts récents</h2>
+          <a routerLink="/explore">Tout voir</a>
+        </div>
+        <div class="tiles">
+          @for (track of data.recent; track track.id; let i = $index) {
+            <app-track-tile [track]="track" (play)="play(data.recent, i)" />
+          } @empty {
+            <p class="muted">Aucune piste publique récente.</p>
+          }
+        </div>
+      </section>
+
+      <section class="block" aria-labelledby="selection-title">
+        <h2 id="selection-title">Sélection</h2>
+        <div class="tiles">
+          @for (track of data.selection; track track.id; let i = $index) {
+            <app-track-tile [track]="track" (play)="play(data.selection, i)" />
+          }
+        </div>
+      </section>
+
+      <section class="block" aria-labelledby="mixes-title">
+        <div class="block-head">
+          <h2 id="mixes-title">Mixages de la communauté</h2>
+          <a [routerLink]="['/explore']" [queryParams]="{ kind: 'mix' }">Tout voir</a>
+        </div>
+        <div class="tiles">
+          @for (track of data.mixes; track track.id; let i = $index) {
+            <app-track-tile [track]="track" (play)="play(data.mixes, i)" />
+          } @empty {
+            <div class="empty small">
+              <p>Aucun mixage public pour l’instant.</p>
+              @if (auth.token()) {
+                <a class="btn ghost" routerLink="/mix">Ouvrir le studio de mixage</a>
+              }
+            </div>
+          }
+        </div>
+      </section>
+
+      <section class="block" aria-labelledby="albums-title">
+        <h2 id="albums-title">Albums</h2>
+        <div class="albums">
+          @for (album of data.albums; track album.title + album.author) {
+            <a class="album" [routerLink]="['/explore']" [queryParams]="{ album: album.title, author: album.author }">
+              <span class="album-art">
+                @if (album.coverUrl) {
+                  <img [src]="album.coverUrl" alt="" loading="lazy" />
+                } @else {
+                  <app-icon name="disc" size="2rem" [strokeWidth]="1.5" />
+                }
+              </span>
+              <strong>{{ album.title }}</strong>
+              <small>{{ album.author }} · {{ album.count }} piste(s)</small>
+            </a>
+          } @empty {
+            <div class="empty small">
+              <p>Aucun album public pour l’instant. Un album regroupe des pistes publiques portant le même nom d’album.</p>
+            </div>
+          }
+        </div>
+      </section>
+    }
+  }
+</section>

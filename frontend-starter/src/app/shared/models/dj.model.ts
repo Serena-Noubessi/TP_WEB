@@ -34,3 +34,29 @@ export interface LoopRegion {
 
 /** Type MIME utilisé pour glisser une piste de la bibliothèque vers une platine. */
 export const TRACK_DRAG_TYPE = 'application/x-gpc-track';
+
+/** État d'une platine enregistré dans un brouillon de mixage (section 8). */
+export interface MixDeckState {
+  source: { kind: 'track' | 'external'; id: string };
+  title: string;
+  position: number;
+  pitch: number;
+  pitchRange: number;
+  eq: Record<EqBand, number>;
+  filter: number;
+  fx: Record<FxType, number>;
+  volume: number;
+}
+
+/** État du studio enregistré dans un brouillon de mixage. */
+export interface MixState {
+  crossfader: number;
+  masterVolume: number;
+  decks: Partial<Record<DeckId, MixDeckState>>;
+}
+
+/** Pistes MOST VIBE et morceaux en ligne utilisés dans un mix (crédités à la publication). */
+export interface MixSources {
+  tracks: string[];
+  external: string[];
+}

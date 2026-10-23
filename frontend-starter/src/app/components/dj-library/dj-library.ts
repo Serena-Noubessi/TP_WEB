@@ -1,3 +1,4 @@
+import { httpMessage } from '../../shared/services/library.service';
 import { Component, computed, inject, OnDestroy, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { readAnalysis } from '../../shared/audio/dj-storage';
@@ -6,7 +7,7 @@ import { Track } from '../../shared/models/track.model';
 import { DjEngineService } from '../../shared/services/dj-engine.service';
 import { OnlineTrackService } from '../../shared/services/online-track.service';
 import { CategoryStatsService } from '../../shared/services/category-stats.service';
-import { CATEGORIES, categoryOf, categorySearch, displayTitle, findCategory, MusicCategory } from '../../shared/models/category.model';
+import { CATEGORIES, categoryOf, displayTitle, MusicCategory } from '../../shared/models/category.model';
 import { TrackService } from '../../shared/services/track.service';
 import { IconComponent } from '../icon/icon';
 
@@ -55,10 +56,8 @@ export class DjLibraryComponent implements OnDestroy {
   load(): void {
     this.loading.set(true);
     this.error.set('');
-    // Texte saisi, ou à défaut préfixe de catégorie (« [House] ») : filtrage fait par le backend.
-    const category = findCategory(this.categoryFilter());
-    const search = this.search().trim() || (category ? categorySearch(category) : '');
-    this.service.list(this.page(), 8, search).subscribe({
+    // Texte et style filtrés par le backend (paramètres search et style).
+    this.service.list(this.page(), 8, this.search().trim(), this.categoryFilter()).subscribe({
       next: (response) => {
         const docs = 'docs' in response ? response.docs : response.items;
         const totalPages = 'totalPages' in response ? response.totalPages : response.pages;
@@ -68,11 +67,7 @@ export class DjLibraryComponent implements OnDestroy {
       },
       error: (error: HttpErrorResponse) => {
         console.error('[DjLibrary] Chargement impossible', error);
-        this.error.set(
-          error.status === 0
-            ? 'Impossible de joindre l’API. Vérifiez que le backend est démarré.'
-            : 'Le chargement de la bibliothèque a échoué.',
-        );
+        this.error.set(httpMessage(error, 'Le chargement de la bibliothèque a échoué. Réessayez avec « Actualiser ».'));
         this.loading.set(false);
       },
     });

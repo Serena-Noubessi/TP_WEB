@@ -1,11 +1,15 @@
 import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { CatalogTrack } from '../catalogs/music-catalog';
 import { OnlineAudioError } from '../audio/online-audio-error';
 import { checkDecodable, downloadAudio, DownloadProgress, parseAudioUrl } from '../audio/remote-audio';
 import { OnlineSource, Track } from '../models/track.model';
+import { findCategory, guessCategory } from '../models/category.model';
 import { AuthService } from './auth.service';
 
-const STORAGE_PREFIX = 'gpc_online_tracks_';
+/** Ancienne clé de stockage dans le navigateur (avant MOST VIBE étape 2), reprise une seule fois. */
+const LEGACY_STORAGE_PREFIX = 'gpc_online_tracks_';
 /** Nombre de fichiers gardés en mémoire pendant la session (pas de stockage durable). */
 const MEMORY_CACHE_SIZE = 3;
 
@@ -19,25 +23,49 @@ export interface UrlTrackInput {
 
 /**
  * Morceaux ajoutés depuis internet.
- * Le backend n'est pas modifié : il ne connaît que les fichiers téléversés. Ces
- * morceaux sont donc gardés comme de simples références (titre, artiste, source,
- * licence, adresse du fichier) dans ce navigateur, une liste par compte. Le fichier
- * lui-même n'est jamais copié sur le serveur — Jamendo interdit de stocker ses
- * morceaux — : il est téléchargé en mémoire au moment de l'écouter ou de le mixer.
+ * MOST VIBE étape 2 : les références (titre, artiste, source, licence, adresse du
+ * fichier) sont enregistrées EN BASE via /api/external-tracks, une liste par compte.
+ * Le fichier lui-même n'est jamais copié sur le serveur — Jamendo interdit de
+ * stocker ses morceaux — : il est téléchargé en mémoire au moment de l'écouter ou
+ * de le mixer. Les listes que l'ancienne version gardait dans le navigateur sont
+ * envoyées au serveur une seule fois, puis effacées du navigateur.
  */
 @Injectable({ providedIn: 'root' })
 export class OnlineTrackService {
   private readonly auth = inject(AuthService);
+  private readonly http = inject(HttpClient);
   private readonly memory = new Map<string, Blob>();
 
   private readonly owner = computed(() => this.ownerFromToken(this.auth.token()));
   readonly tracks = signal<Track[]>([]);
+  readonly loading = signal(false);
+  readonly loadError = signal('');
 
   constructor() {
     effect(() => {
       const owner = this.owner();
-      untracked(() => this.tracks.set(owner ? this.read(owner) : []));
+      untracked(() => {
+        this.tracks.set([]);
+        if (owner) void this.load(owner);
+      });
     });
+  }
+
+  /** Charge la liste depuis le serveur (après avoir repris l'éventuelle ancienne liste du navigateur). */
+  async load(owner = this.owner()): Promise<void> {
+    if (!owner) return;
+    this.loading.set(true);
+    this.loadError.set('');
+    try {
+      await this.migrateLegacy(owner);
+      const { docs } = await firstValueFrom(this.http.get<{ docs: Track[] }>('/api/external-tracks'));
+      if (this.owner() === owner) this.tracks.set(docs);
+    } catch (error) {
+      console.error('[OnlineTracks] Chargement impossible', error);
+      this.loadError.set('Impossible de charger vos morceaux en ligne. Vérifiez votre connexion.');
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   /** Morceaux dont le titre, l'artiste ou la source contiennent le texte cherché. */
@@ -103,11 +131,12 @@ export class OnlineTrackService {
     return this.tracks().some((track) => track.online?.audioUrl === audioUrl);
   }
 
-  remove(id: string): void {
+  /** Retire un morceau de la liste (la référence seulement ; le fichier reste chez sa source). */
+  async remove(id: string): Promise<void> {
+    await firstValueFrom(this.http.delete(`/api/external-tracks/${id}`));
     const track = this.tracks().find((item) => item.id === id);
     if (track?.online) this.memory.delete(track.online.audioUrl);
     this.tracks.update((tracks) => tracks.filter((item) => item.id !== id));
-    this.persist();
   }
 
   /** Fichier audio d'un morceau en ligne, pour le moteur des decks. */
@@ -124,20 +153,19 @@ export class OnlineTrackService {
     return blob;
   }
 
-  private save(online: OnlineSource, title: string, originalName: string, blob: Blob): Track {
-    const track: Track = {
-      id: `online-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-      title,
-      originalName,
-      mimeType: blob.type || 'audio/mpeg',
-      size: blob.size,
-      coverUrl: null,
-      createdAt: new Date().toISOString(),
-      online,
-    };
+  private async save(online: OnlineSource, title: string, originalName: string, blob: Blob): Promise<Track> {
+    let track: Track;
+    try {
+      track = await firstValueFrom(
+        this.http.post<Track>('/api/external-tracks', toPayload(online, title, originalName, blob.type || 'audio/mpeg', blob.size)),
+      );
+    } catch (error) {
+      console.error('[OnlineTracks] Enregistrement refusé', error);
+      const message = (error as { error?: { message?: string } }).error?.message;
+      throw new OnlineAudioError('unreachable', message ? `Enregistrement impossible : ${message}` : 'Enregistrement impossible : le serveur ne répond pas.');
+    }
     this.remember(online.audioUrl, blob);
-    this.tracks.update((tracks) => [track, ...tracks]);
-    this.persist();
+    this.tracks.update((tracks) => [track, ...tracks.filter((item) => item.id !== track.id)]);
     return track;
   }
 
@@ -162,23 +190,47 @@ export class OnlineTrackService {
     }
   }
 
-  private read(owner: string): Track[] {
+  /**
+   * Reprise unique de l'ancienne liste gardée dans le navigateur : elle est envoyée
+   * au serveur, puis effacée du navigateur seulement si le serveur l'a acceptée.
+   */
+  private async migrateLegacy(owner: string): Promise<void> {
+    const key = LEGACY_STORAGE_PREFIX + owner;
+    let legacy: Track[] = [];
     try {
-      const raw = localStorage.getItem(STORAGE_PREFIX + owner);
-      const tracks = raw ? (JSON.parse(raw) as Track[]) : [];
-      return Array.isArray(tracks) ? tracks.filter((track) => track.online?.audioUrl) : [];
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Track[];
+      legacy = Array.isArray(parsed) ? parsed.filter((track) => track.online?.audioUrl) : [];
     } catch {
-      return [];
+      return;
     }
+    if (legacy.length) {
+      const items = legacy.map((track) => toPayload(track.online!, track.title, track.originalName, track.mimeType, track.size));
+      const result = await firstValueFrom(this.http.post<{ docs: Track[]; rejected: unknown[] }>('/api/external-tracks', { items }));
+      console.log(`[OnlineTracks] ${result.docs.length} morceau(x) repris du navigateur, ${result.rejected.length} refusé(s)`);
+    }
+    localStorage.removeItem(key);
   }
+}
 
-  private persist(): void {
-    const owner = this.owner();
-    if (!owner) return;
-    try {
-      localStorage.setItem(STORAGE_PREFIX + owner, JSON.stringify(this.tracks()));
-    } catch (error) {
-      console.warn('[OnlineTracks] Enregistrement impossible', error);
-    }
-  }
+/** Corps envoyé à POST /api/external-tracks. */
+function toPayload(online: OnlineSource, title: string, originalName: string, mimeType: string, size: number) {
+  return {
+    title,
+    originalName,
+    mimeType,
+    size,
+    audioUrl: online.audioUrl,
+    artist: online.artist,
+    sourceId: online.sourceId,
+    sourceLabel: online.sourceLabel,
+    pageUrl: online.pageUrl,
+    license: online.license,
+    licenseUrl: online.licenseUrl,
+    imageUrl: online.imageUrl,
+    durationSeconds: online.durationSeconds,
+    // Les anciennes catégories (house, techno…) sont ramenées aux 7 styles MOST VIBE.
+    style: (findCategory(online.category) ?? guessCategory(online.category))?.id ?? 'autres',
+  };
 }

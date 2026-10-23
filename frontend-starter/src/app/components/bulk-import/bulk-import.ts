@@ -1,13 +1,13 @@
+import { AUDIO_ACCEPT, isAcceptedAudio, prepareAudioFile } from '../../shared/audio/audio-formats';
 import { Component, computed, inject, OnDestroy, output, signal } from '@angular/core';
 import { HttpErrorResponse, HttpEventType } from '@angular/common/http';
 import { readAudioTags } from '../../shared/audio/id3-reader';
-import { CATEGORIES, findCategory, guessCategory, MusicCategory, titleWithCategory } from '../../shared/models/category.model';
+import { CATEGORIES, findCategory, guessCategory, MusicCategory } from '../../shared/models/category.model';
 import { Track } from '../../shared/models/track.model';
 import { TrackService } from '../../shared/services/track.service';
 import { IconComponent } from '../icon/icon';
 
 const MAX_AUDIO_FILE_SIZE = 25 * 1024 * 1024;
-const ALLOWED_AUDIO_TYPES = new Set(['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/mp4', 'audio/x-m4a']);
 /** Envois simultanés : assez pour aller vite, sans surcharger le serveur. */
 const PARALLEL_UPLOADS = 3;
 
@@ -37,9 +37,10 @@ export class BulkImportComponent implements OnDestroy {
 
   readonly items = signal<ImportItem[]>([]);
   readonly ignored = signal(0);
+  readonly audioAccept = AUDIO_ACCEPT;
   readonly analysing = signal(false);
   readonly running = signal(false);
-  readonly fallbackCategory = signal('autre');
+  readonly fallbackCategory = signal('autres');
   readonly summary = signal('');
   private cancelled = false;
 
@@ -71,7 +72,16 @@ export class BulkImportComponent implements OnDestroy {
     if (!files.length || this.running()) return;
     this.analysing.set(true);
     this.summary.set('');
-    const accepted = files.filter((file) => ALLOWED_AUDIO_TYPES.has(file.type) && file.size <= MAX_AUDIO_FILE_SIZE);
+    const candidates = files.filter((file) => isAcceptedAudio(file) && file.size <= MAX_AUDIO_FILE_SIZE);
+    // Les fichiers MPEG ne sont gardés que si le navigateur sait en lire le son (ils partent alors en « audio/mpeg »).
+    const accepted: File[] = [];
+    for (const file of candidates) {
+      try {
+        accepted.push(await prepareAudioFile(file));
+      } catch (error) {
+        console.warn('[BulkImport] Fichier MPEG illisible ignoré', file.name, error);
+      }
+    }
     this.ignored.set(files.length - accepted.length);
 
     const items: ImportItem[] = [];
@@ -115,13 +125,14 @@ export class BulkImportComponent implements OnDestroy {
       while (queue.length && !this.cancelled) {
         const index = queue.shift() as number;
         const item = this.items()[index];
-        const title = titleWithCategory(item.title, item.category ?? fallback);
+        const title = item.title;
+        const style = (item.category ?? fallback)?.id ?? 'autres';
         this.patch(index, { status: 'sending' });
         try {
-          if (await this.alreadyExists(title)) {
+          if (await this.alreadyExists(title, style)) {
             this.patch(index, { status: 'skipped', message: 'déjà présent' });
           } else {
-            await this.upload(item.file, title);
+            await this.upload(item.file, title, style);
             this.patch(index, { status: 'done' });
           }
         } catch (error) {
@@ -163,10 +174,10 @@ export class BulkImportComponent implements OnDestroy {
     this.items.update((items) => items.map((item, position) => (position === index ? { ...item, ...change } : item)));
   }
 
-  /** Un morceau portant exactement le même titre (catégorie comprise) est considéré comme déjà importé. */
-  private alreadyExists(title: string): Promise<boolean> {
+  /** Un morceau de même titre et de même style est considéré comme déjà importé. */
+  private alreadyExists(title: string, style: string): Promise<boolean> {
     return new Promise((resolve) => {
-      this.service.list(1, 20, title).subscribe({
+      this.service.list(1, 20, title, style).subscribe({
         next: (response) => {
           const docs: Track[] = 'docs' in response ? response.docs : response.items;
           resolve(docs.some((track) => track.title === title));
@@ -176,9 +187,9 @@ export class BulkImportComponent implements OnDestroy {
     });
   }
 
-  private upload(file: File, title: string): Promise<void> {
+  private upload(file: File, title: string, style: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.service.upload(file, title).subscribe({
+      this.service.upload(file, title, undefined, { style, visibility: 'private' }).subscribe({
         next: (event) => {
           if (event.type === HttpEventType.Response) resolve();
         },

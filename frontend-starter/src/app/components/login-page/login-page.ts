@@ -1,7 +1,8 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
-import { AuthService } from '../../shared/services/auth.service';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { AuthService, authErrorMessage } from '../../shared/services/auth.service';
+import { PendingActionService, safeReturnUrl } from '../../shared/services/pending-action.service';
 
 @Component({
   imports: [ReactiveFormsModule, RouterLink],
@@ -11,6 +12,17 @@ import { AuthService } from '../../shared/services/auth.service';
 export class LoginPageComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly pending = inject(PendingActionService);
+
+  /** Action demandée avant la connexion (« aimer “X” »), affichée en bandeau. */
+  readonly pendingLabel = signal(this.pending.labelFor(this.route.snapshot.queryParamMap.get('reason')));
+  /** Page d'origine (protégée ou action sociale), conservée entre connexion et inscription. */
+  readonly returnUrl = safeReturnUrl(this.route.snapshot.queryParamMap.get('returnUrl'));
+  /** Paramètres transmis au lien « Créer un compte » / « Déjà inscrit ? » pour ne pas perdre l'action. */
+  /** Pourquoi on arrive ici après une déconnexion forcée (session expirée, compte suspendu). */
+  readonly endedReason = this.route.snapshot.queryParamMap.get('reason');
+  readonly linkParams = computed(() => ({ ...(this.returnUrl && { returnUrl: this.returnUrl }), ...(this.pendingLabel() && { reason: 'action' }) }));
 
   readonly error = signal('');
   readonly submitted = signal(false);
@@ -38,10 +50,10 @@ export class LoginPageComponent {
     this.auth.login(values.email, values.password).subscribe({
       next: () => {
         console.debug('[LoginPage] Connexion réussie');
-        void this.router.navigateByUrl('/tracks');
+        void this.pending.runAfterLogin(this.returnUrl ?? '/tracks').then(({ url }) => this.router.navigateByUrl(url));
       },
-      error: (error: { error?: { message?: string } }) => {
-        const message = error.error?.message ?? 'Erreur de connexion';
+      error: (error: unknown) => {
+        const message = authErrorMessage(error, 'login');
         console.error('[LoginPage] Échec de connexion:', message);
         this.error.set(message);
       },

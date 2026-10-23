@@ -1,0 +1,382 @@
+<section class="library">
+  <header class="head">
+    <div>
+      <p class="eyebrow">Espace personnel</p>
+      <h1>Ma bibliothèque</h1>
+    </div>
+    <a class="btn primary" routerLink="/tracks"><app-icon name="plus" /> Ajouter une piste</a>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Rubriques de ma bibliothèque">
+    @for (item of tabs; track item.id) {
+      @let count = $any(counts())[item.id];
+      <button type="button" role="tab" class="tab" [class.active]="tab() === item.id" [attr.aria-selected]="tab() === item.id" (click)="selectTab(item.id)">
+        <app-icon [name]="item.icon" /> {{ item.label }}
+        @if (count !== undefined && count !== null) { <span class="count">{{ count }}</span> }
+      </button>
+    }
+  </nav>
+
+  @switch (tab()) {
+    <!-- ======================= Mes fichiers ======================= -->
+    @case ('files') {
+      <section class="panel" aria-labelledby="files-title">
+        <div class="panel-head">
+          <h2 id="files-title">Mes fichiers</h2>
+          <form class="search" role="search" (submit)="$event.preventDefault(); searchFiles(filesQuery.value)">
+            <app-icon name="search" />
+            <input #filesQuery type="search" placeholder="Chercher dans mes titres" aria-label="Chercher dans mes titres" [value]="filesSearch()" />
+          </form>
+        </div>
+        <p class="help"><app-icon name="info" /> Chaque piste est <strong>Privée</strong> par défaut. Le bouton « Visibilité et partage » permet de la rendre publique ou de choisir qui peut l’écouter.</p>
+
+        @if (filesLoading() && !files().length) {
+          <p class="state" role="status">Chargement de vos fichiers…</p>
+        } @else if (filesError()) {
+          <div class="state error" role="alert">{{ filesError() }} <button type="button" class="link" (click)="loadFiles()">Réessayer</button></div>
+        } @else if (!files().length) {
+          <div class="empty">
+            <app-icon name="inbox" size="2rem" />
+            @if (filesSearch()) {
+              <p>Aucun de vos titres ne contient « {{ filesSearch() }} ».</p>
+            } @else {
+              <p>Vous n’avez encore envoyé aucune piste.</p>
+              <a class="btn primary" routerLink="/tracks">Envoyer ma première piste</a>
+            }
+          </div>
+        } @else {
+          <ul class="rows">
+            @for (track of files(); track track.id; let i = $index) {
+              @let category = categoryOf(track);
+              @let vis = visibilityLabels[track.visibility ?? 'private'];
+              <li class="row" [class.is-current]="isCurrent(track)">
+                <span class="thumb" [style.--cat]="category.color">
+                  <app-cover-image [url]="track.coverUrl" [direct]="track.visibility === 'public'" alt="">
+                    <app-icon [name]="category.icon" size="1.3rem" />
+                  </app-cover-image>
+                </span>
+                <span class="info">
+                  <strong>{{ displayTitle(track) }}</strong>
+                  <small>{{ category.label }}@if (track.album) { · {{ track.album }} } · ajoutée le {{ date(track.createdAt) }}</small>
+                </span>
+                <span class="badge" [class]="'badge vis-' + (track.visibility ?? 'private')"><app-icon [name]="vis.icon" /> {{ vis.label }}</span>
+                <span class="actions">
+                  <button type="button" class="icon-btn" (click)="playFile(files(), i)" [attr.aria-label]="(isCurrent(track) && player.playing() ? 'Pause : ' : 'Écouter : ') + displayTitle(track)">
+                    <app-icon [name]="isCurrent(track) && player.playing() ? 'pause' : 'play'" />
+                  </button>
+                  <button type="button" class="btn small ghost" (click)="sharing.set(track)"><app-icon name="share" /> Visibilité et partage</button>
+                </span>
+              </li>
+            }
+          </ul>
+          @if (filesTotalPages() > 1) {
+            <nav class="pager" aria-label="Pages de mes fichiers">
+              <button type="button" class="btn small ghost" [disabled]="filesPage() <= 1" (click)="loadFiles(filesPage() - 1)">Précédent</button>
+              <span>Page {{ filesPage() }} / {{ filesTotalPages() }}</span>
+              <button type="button" class="btn small ghost" [disabled]="filesPage() >= filesTotalPages()" (click)="loadFiles(filesPage() + 1)">Suivant</button>
+            </nav>
+          }
+        }
+      </section>
+    }
+
+    <!-- ======================= Albums ======================= -->
+    @case ('albums') {
+      <section class="panel" aria-labelledby="albums-title">
+        <h2 id="albums-title">Mes albums</h2>
+        <p class="help"><app-icon name="info" /> Un album regroupe vos pistes qui portent le même nom d’album (champ « Album » à l’envoi).</p>
+        @if (albumsError()) {
+          <div class="state error" role="alert">{{ albumsError() }} <button type="button" class="link" (click)="loadAlbums()">Réessayer</button></div>
+        } @else if (albums() === null) {
+          <p class="state" role="status">Chargement de vos albums…</p>
+        } @else if (!albums()!.length) {
+          <div class="empty">
+            <app-icon name="album" size="2rem" />
+            <p>Aucun album pour l’instant. Indiquez un nom d’album en envoyant vos pistes pour les regrouper ici.</p>
+            <a class="btn primary" routerLink="/tracks">Envoyer une piste</a>
+          </div>
+        } @else {
+          <div class="cards">
+            @for (album of albums(); track album.title) {
+              <button type="button" class="album" [class.open]="openAlbum()?.album?.title === album.title" (click)="showAlbum(album)">
+                <span class="album-art">
+                  <app-cover-image [url]="album.coverUrl" alt=""><app-icon name="album" size="2.2rem" [strokeWidth]="1.5" /></app-cover-image>
+                </span>
+                <strong>{{ album.title }}</strong>
+                <small>{{ album.count }} piste(s) · {{ album.publicCount }} publique(s)</small>
+              </button>
+            }
+          </div>
+          @if (openAlbum(); as open) {
+            <section class="detail" aria-live="polite">
+              <h3>{{ open.album.title }}</h3>
+              @if (!open.tracks.length) {
+                <p class="state">Chargement des pistes…</p>
+              } @else {
+                <div class="tiles">
+                  @for (track of open.tracks; track track.id; let i = $index) {
+                    <app-track-tile [track]="track" (play)="playFile(open.tracks, i)" />
+                  }
+                </div>
+              }
+            </section>
+          }
+        }
+      </section>
+    }
+
+    <!-- ======================= Playlists ======================= -->
+    @case ('playlists') {
+      <section class="panel" aria-labelledby="playlists-title">
+        <h2 id="playlists-title">Mes playlists</h2>
+        <form class="create" (submit)="$event.preventDefault(); createPlaylist(newPlaylist.value, newVisibility.value); newPlaylist.value = ''">
+          <label class="sr-only" for="new-playlist">Nom de la nouvelle playlist</label>
+          <input id="new-playlist" #newPlaylist type="text" maxlength="80" placeholder="Nom de la nouvelle playlist" />
+          <label class="sr-only" for="new-playlist-visibility">Visibilité</label>
+          <select id="new-playlist-visibility" #newVisibility>
+            <option value="private">Privée</option>
+            <option value="public">Publique</option>
+          </select>
+          <button type="submit" class="btn primary"><app-icon name="plus" /> Créer</button>
+        </form>
+        @if (playlistMessage()) { <p class="flash" role="status">{{ playlistMessage() }}</p> }
+
+        @if (playlistsError()) {
+          <div class="state error" role="alert">{{ playlistsError() }} <button type="button" class="link" (click)="loadPlaylists()">Réessayer</button></div>
+        } @else if (playlists() === null) {
+          <p class="state" role="status">Chargement de vos playlists…</p>
+        } @else if (!playlists()!.length) {
+          <div class="empty">
+            <app-icon name="list-music" size="2rem" />
+            <p>Aucune playlist. Créez-en une ci-dessus, puis utilisez le bouton <app-icon name="list-plus" /> sur n’importe quelle piste pour l’y ajouter.</p>
+          </div>
+        } @else {
+          <ul class="rows">
+            @for (playlist of playlists(); track playlist.id) {
+              <li class="row" [class.is-open]="openPlaylist()?.id === playlist.id">
+                <span class="thumb playlist-thumb"><app-icon name="list-music" size="1.3rem" /></span>
+                <span class="info">
+                  <strong>{{ playlist.name }}</strong>
+                  <small>{{ playlist.trackCount }} piste(s) · modifiée le {{ date(playlist.updatedAt) }}</small>
+                </span>
+                <button type="button" class="badge" [class]="'badge vis-' + playlist.visibility" (click)="togglePlaylistVisibility(playlist)"
+                  [title]="'Rendre ' + (playlist.visibility === 'public' ? 'privée' : 'publique')">
+                  <app-icon [name]="playlist.visibility === 'public' ? 'globe' : 'lock'" /> {{ playlist.visibility === 'public' ? 'Publique' : 'Privée' }}
+                </button>
+                <span class="actions">
+                  <button type="button" class="btn small ghost" (click)="showPlaylist(playlist)">Ouvrir</button>
+                  @if (confirmDeletePlaylist() === playlist.id) {
+                    <button type="button" class="btn small danger" (click)="deletePlaylist(playlist)">Confirmer</button>
+                    <button type="button" class="btn small ghost" (click)="confirmDeletePlaylist.set('')">Annuler</button>
+                  } @else {
+                    <button type="button" class="icon-btn" (click)="confirmDeletePlaylist.set(playlist.id)" [attr.aria-label]="'Supprimer la playlist ' + playlist.name"><app-icon name="trash" /></button>
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+          @if (openPlaylist(); as detail) {
+            <section class="detail" aria-live="polite">
+              <h3>{{ detail.name }}</h3>
+              @if (detail.hiddenCount) {
+                <p class="help"><app-icon name="lock" /> {{ detail.hiddenCount }} piste(s) ne sont plus accessibles (rendues privées par leur auteur) et sont masquées.</p>
+              }
+              @if (!detail.tracks.length) {
+                <p class="state">Cette playlist est vide.</p>
+              } @else {
+                <ul class="rows">
+                  @for (track of detail.tracks; track track.id; let i = $index) {
+                    <li class="row">
+                      <button type="button" class="icon-btn" (click)="playFile(detail.tracks, i)" [attr.aria-label]="'Écouter : ' + displayTitle(track)"><app-icon name="play" /></button>
+                      <span class="info"><strong>{{ displayTitle(track) }}</strong><small>{{ track.author?.name }} · {{ categoryOf(track).label }}</small></span>
+                      <button type="button" class="btn small ghost" (click)="removeFromPlaylist(detail, track)">Retirer</button>
+                    </li>
+                  }
+                </ul>
+              }
+            </section>
+          }
+        }
+      </section>
+    }
+
+    <!-- ======================= Favoris ======================= -->
+    @case ('favorites') {
+      <section class="panel" aria-labelledby="favorites-title">
+        <h2 id="favorites-title">Mes favoris</h2>
+        @if (favoritesError()) {
+          <div class="state error" role="alert">{{ favoritesError() }} <button type="button" class="link" (click)="loadFavorites()">Réessayer</button></div>
+        } @else if (favorites() === null) {
+          <p class="state" role="status">Chargement de vos favoris…</p>
+        } @else if (!favorites()!.length) {
+          <div class="empty">
+            <app-icon name="star" size="2rem" />
+            <p>Aucun favori. Touchez l’étoile <app-icon name="star" /> d’une piste pour la retrouver ici.</p>
+            <a class="btn primary" routerLink="/explore">Explorer la communauté</a>
+          </div>
+        } @else {
+          <div class="tiles">
+            @for (track of favorites(); track track.id; let i = $index) {
+              <app-track-tile [track]="track" (play)="playFile(favorites()!, i)" />
+            }
+          </div>
+        }
+      </section>
+    }
+
+    <!-- ======================= Partagés avec moi ======================= -->
+    @case ('shared') {
+      <section class="panel" aria-labelledby="shared-title">
+        <h2 id="shared-title">Partagés avec moi</h2>
+        <p class="help"><app-icon name="info" /> Pistes privées que d’autres personnes ont choisi de partager avec vous. Si l’auteur retire votre accès, la piste disparaît de cette liste.</p>
+        @if (sharedError()) {
+          <div class="state error" role="alert">{{ sharedError() }} <button type="button" class="link" (click)="loadShared()">Réessayer</button></div>
+        } @else if (shared() === null) {
+          <p class="state" role="status">Chargement…</p>
+        } @else if (!shared()!.length) {
+          <div class="empty">
+            <app-icon name="users" size="2rem" />
+            <p>Personne n’a encore partagé de piste avec vous.</p>
+          </div>
+        } @else {
+          <div class="tiles">
+            @for (track of shared(); track track.id; let i = $index) {
+              <div class="shared-tile">
+                <app-track-tile [track]="track" (play)="playFile(shared()!, i)" />
+                <small class="shared-by">Partagée par {{ track.author?.name }} le {{ date(track.sharedAt) }}</small>
+              </div>
+            }
+          </div>
+        }
+      </section>
+    }
+
+    <!-- ======================= Projets de mixage ======================= -->
+    @case ('mixes') {
+      <section class="panel" aria-labelledby="mixes-title">
+        <div class="panel-head">
+          <h2 id="mixes-title">Projets de mixage</h2>
+          <a class="btn primary" routerLink="/mix"><app-icon name="plus" /> Nouveau mix</a>
+        </div>
+        <p class="help"><app-icon name="info" /> Un brouillon garde l’état du studio (pistes, positions, réglages) : « Reprendre » le recharge tel quel. Les mixages publiés restent en ligne même si vous supprimez le projet.</p>
+        @if (mixMessage()) { <p class="flash" role="status">{{ mixMessage() }}</p> }
+        @if (projectsError()) {
+          <div class="state error" role="alert">{{ projectsError() }} <button type="button" class="link" (click)="loadMixes()">Réessayer</button></div>
+        } @else if (projects() === null) {
+          <p class="state" role="status">Chargement de vos projets…</p>
+        } @else if (!projects()!.length) {
+          <div class="empty">
+            <app-icon name="sliders" size="2rem" />
+            <p>Aucun projet. Dans le studio, chargez vos pistes puis cliquez « Enregistrer le brouillon ».</p>
+            <a class="btn primary" routerLink="/mix">Ouvrir le studio de mixage</a>
+          </div>
+        } @else {
+          <ul class="rows">
+            @for (project of projects(); track project.id) {
+              <li class="row">
+                <span class="thumb playlist-thumb"><app-icon name="sliders" size="1.3rem" /></span>
+                <span class="info">
+                  <strong>{{ project.title }}</strong>
+                  <small>{{ decksLabel(project) }} · modifié le {{ date(project.updatedAt) }}</small>
+                </span>
+                <span [class]="project.status === 'published' ? 'badge vis-public' : 'badge vis-friends'">
+                  {{ project.status === 'published' ? 'Publié (' + project.publishedTrackIds.length + ')' : 'Brouillon' }}
+                </span>
+                <span class="actions">
+                  <a class="btn small primary" routerLink="/mix" [queryParams]="{ project: project.id }">Reprendre</a>
+                  @if (confirmDeleteProject() === project.id) {
+                    <button type="button" class="btn small danger" (click)="deleteProject(project.id)">Confirmer</button>
+                    <button type="button" class="btn small ghost" (click)="confirmDeleteProject.set('')">Annuler</button>
+                  } @else {
+                    <button type="button" class="icon-btn" (click)="confirmDeleteProject.set(project.id)" [attr.aria-label]="'Supprimer le projet ' + project.title"><app-icon name="trash" /></button>
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+        }
+
+        <h2 class="sub">Demandes de remix reçues</h2>
+        @if (incoming() === null) {
+          <p class="state" role="status">Chargement…</p>
+        } @else if (!incoming()!.length) {
+          <p class="state">Personne n’a encore demandé à remixer vos pistes.</p>
+        } @else {
+          <ul class="rows">
+            @for (request of incoming(); track request.id) {
+              <li class="row">
+                <span class="info">
+                  <strong>{{ request.requester.name }} veut remixer « {{ request.track.title }} »</strong>
+                  <small>{{ request.message || 'Sans message' }} · {{ date(request.createdAt) }}</small>
+                </span>
+                @if (request.status === 'pending') {
+                  <span class="actions">
+                    <button type="button" class="btn small primary" (click)="answer(request.id, true)"><app-icon name="check" /> Accepter</button>
+                    <button type="button" class="btn small ghost" (click)="answer(request.id, false)">Refuser</button>
+                  </span>
+                } @else {
+                  <span [class]="request.status === 'accepted' ? 'badge vis-public' : 'badge vis-private'">{{ request.status === 'accepted' ? 'Acceptée' : 'Refusée' }}</span>
+                }
+              </li>
+            }
+          </ul>
+        }
+
+        <h2 class="sub">Mes demandes envoyées</h2>
+        @if (outgoing() === null) {
+          <p class="state" role="status">Chargement…</p>
+        } @else if (!outgoing()!.length) {
+          <p class="state">Pour remixer la piste d’un autre membre : bouton « ⋯ » sur sa piste, puis « Remixer ».</p>
+        } @else {
+          <ul class="rows">
+            @for (request of outgoing(); track request.id) {
+              <li class="row">
+                <span class="info">
+                  <strong>« {{ request.track.title }} » de {{ request.owner.name }}</strong>
+                  <small>Envoyée le {{ date(request.createdAt) }}</small>
+                </span>
+                <span [class]="requestBadge(request.status)">{{ requestLabel(request.status) }}</span>
+                <span class="actions">
+                  @if (request.status === 'accepted') {
+                    <a class="btn small primary" routerLink="/mix" [queryParams]="{ load: request.track.id, deck: 'A' }">Ouvrir dans le studio</a>
+                  }
+                  @if (request.status === 'pending') {
+                    <button type="button" class="btn small ghost" (click)="cancelRequest(request.id)">Annuler</button>
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+
+    <!-- ======================= Profil ======================= -->
+    @case ('profile') {
+      <section class="panel" aria-labelledby="profile-title">
+        <h2 id="profile-title">Mon profil</h2>
+        @if (auth.currentUser(); as user) {
+          <div class="profile">
+            <span class="avatar big" aria-hidden="true">{{ user.name.charAt(0).toUpperCase() }}</span>
+            <form class="profile-form" (submit)="$event.preventDefault(); saveName(profileName.value)">
+              <label for="profile-name">Nom affiché</label>
+              <input id="profile-name" #profileName type="text" maxlength="60" [value]="user.name" />
+              <p class="help">C’est le seul renseignement visible par les autres (votre email ne l’est jamais).</p>
+              <label for="profile-email">Email</label>
+              <input id="profile-email" type="email" [value]="user.email" disabled />
+              <button type="submit" class="btn primary">Enregistrer</button>
+              @if (profileMessage()) { <p class="flash" role="status">{{ profileMessage() }}</p> }
+              @if (profileError()) { <p class="state error" role="alert">{{ profileError() }}</p> }
+            </form>
+          </div>
+        } @else {
+          <p class="state" role="status">Chargement du profil…</p>
+        }
+      </section>
+    }
+  }
+</section>
+
+@if (sharing(); as track) {
+  <app-share-dialog [track]="track" (changed)="shareChanged($event)" (closed)="sharing.set(null)" />
+}

@@ -1,6 +1,7 @@
+import { httpMessage } from '../../shared/services/library.service';
 import { Component, computed, inject, OnDestroy, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { CATEGORIES, categoryOf, categorySearch, displayTitle, findCategory, MusicCategory } from '../../shared/models/category.model';
+import { CATEGORIES, categoryOf, displayTitle, MusicCategory } from '../../shared/models/category.model';
 import { Track } from '../../shared/models/track.model';
 import { AudioPlayerService, MAX_RATE, MIN_RATE } from '../../shared/services/audio-player.service';
 import { CategoryStatsService } from '../../shared/services/category-stats.service';
@@ -61,9 +62,7 @@ export class AudioPageComponent implements OnDestroy {
   load(): void {
     this.loading.set(true);
     this.error.set('');
-    const category = findCategory(this.categoryFilter());
-    const search = this.search().trim() || (category ? categorySearch(category) : '');
-    this.service.list(this.page(), PAGE_SIZE, search).subscribe({
+    this.service.list(this.page(), PAGE_SIZE, this.search().trim(), this.categoryFilter()).subscribe({
       next: (response) => {
         const docs = 'docs' in response ? response.docs : response.items;
         this.tracks.set(Array.isArray(docs) ? docs : []);
@@ -72,7 +71,7 @@ export class AudioPageComponent implements OnDestroy {
       },
       error: (error: HttpErrorResponse) => {
         console.error('[AudioPage] Chargement impossible', error);
-        this.error.set(error.status === 0 ? 'Impossible de joindre l’API.' : 'Le chargement des morceaux a échoué.');
+        this.error.set(httpMessage(error, 'Le chargement des morceaux a échoué. Réessayez dans un instant.'));
         this.loading.set(false);
       },
     });

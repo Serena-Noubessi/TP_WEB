@@ -13,7 +13,7 @@ import { ICONS, IconName } from '../../shared/icons/icons';
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
-      fill="none"
+      [attr.fill]="filled() ? 'currentColor' : 'none'"
       stroke="currentColor"
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -54,6 +54,8 @@ export class IconComponent {
   /** Taille CSS (par défaut 1em : la taille du texte). */
   readonly size = input('1em');
   readonly strokeWidth = input(2);
+  /** Remplit la forme (cœur ou étoile actifs, par exemple). */
+  readonly filled = input(false);
 
   readonly nodes = computed(() => ICONS[this.name()] as unknown as [string, Record<string, string | number | undefined>][]);
 }

@@ -1,0 +1,146 @@
+:host { display: block; }
+
+.messages {
+  display: grid;
+  grid-template-columns: minmax(15rem, 20rem) minmax(0, 1fr);
+  height: calc(100dvh - var(--player-height, 4.75rem) - 4rem);
+  min-height: 26rem;
+  overflow: hidden;
+  border: 1px solid var(--mv-border);
+  border-radius: 18px;
+  background: var(--mv-card);
+}
+
+/* ---------- Liste des conversations ---------- */
+.list { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--mv-border); }
+.list-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 1rem 1rem 0.6rem; }
+.list-head h1 { margin: 0; font-size: 1.4rem; }
+.new { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--mv-primary); font-weight: 700; text-decoration: none; }
+.conversations { flex: 1; overflow-y: auto; margin: 0; padding: 0 0.5rem 0.5rem; list-style: none; }
+.conversation {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem;
+  border: 0;
+  border-radius: 12px;
+  color: var(--mv-text);
+  background: transparent;
+  font-weight: 500;
+  text-align: left;
+}
+.conversation:hover { background: var(--mv-control-hover); }
+.conversation.active { background: var(--mv-primary-soft); }
+.conversation.unread strong, .conversation.unread small { color: var(--mv-text); font-weight: 800; }
+.conv-text { display: grid; flex: 1; min-width: 0; }
+.conv-text small { overflow: hidden; color: var(--mv-muted); text-overflow: ellipsis; white-space: nowrap; }
+.unread-badge { min-width: 1.3rem; padding: 0 0.4rem; border-radius: 999px; color: var(--mv-on-accent); background: var(--mv-primary); font-size: 0.75rem; font-weight: 800; line-height: 1.3rem; text-align: center; }
+
+.avatar {
+  display: grid;
+  flex: 0 0 2.4rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--mv-on-accent);
+  background: var(--mv-secondary-strong);
+  font-weight: 800;
+}
+
+/* ---------- Conversation ouverte ---------- */
+.thread { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--mv-bg); }
+.thread-head { display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--mv-border); background: var(--mv-card); }
+.other { color: var(--mv-text); font-weight: 800; text-decoration: none; }
+.other:hover { color: var(--mv-primary); }
+.back app-icon { transform: rotate(180deg); }
+
+.scroller { display: flex; flex: 1; flex-direction: column; gap: 0.5rem; overflow-y: auto; padding: 1rem; }
+.older { align-self: center; }
+.bubble-row { display: flex; }
+.bubble-row.mine { justify-content: flex-end; }
+.bubble {
+  display: grid;
+  gap: 0.35rem;
+  max-width: min(30rem, 85%);
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--mv-border);
+  border-radius: 16px 16px 16px 4px;
+  background: var(--mv-card);
+}
+.mine .bubble { border-color: transparent; border-radius: 16px 16px 4px 16px; color: var(--mv-on-accent); background: var(--mv-primary); }
+.text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.meta { justify-self: end; color: var(--mv-muted); font-size: 0.72rem; }
+.mine .meta { color: rgb(255 255 255 / 80%); }
+
+/* Carte musicale */
+.card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: min(17rem, 60vw);
+  max-width: 100%;
+  padding: 0.5rem;
+  border-radius: 12px;
+  color: var(--mv-text);
+  background: var(--mv-card);
+  box-shadow: inset 0 0 0 1px var(--mv-border);
+}
+.card-art {
+  display: grid;
+  flex: 0 0 3.4rem;
+  width: 3.4rem;
+  height: 3.4rem;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--cat, var(--mv-muted));
+  background: color-mix(in srgb, var(--cat, var(--mv-muted)) 16%, var(--mv-card));
+}
+.card-info { display: grid; flex: 1; min-width: 0; }
+.card-info strong, .card-info small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-info small { color: var(--mv-muted); font-size: 0.78rem; }
+.card-info .revoked { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--mv-danger-strong); font-weight: 700; white-space: normal; }
+.card-play { display: grid; flex: 0 0 2.4rem; width: 2.4rem; height: 2.4rem; padding: 0; place-items: center; border-radius: 50%; color: var(--mv-on-accent); background: var(--mv-primary); }
+.card.interrupted { background: var(--mv-control); }
+.card.interrupted .card-info strong { color: var(--mv-danger-strong); }
+.card.interrupted .card-info small { white-space: normal; }
+
+/* Zone de saisie */
+.composer { display: flex; align-items: flex-end; gap: 0.5rem; padding: 0.7rem 1rem; border-top: 1px solid var(--mv-border); background: var(--mv-card); }
+.composer textarea { flex: 1; min-width: 0; max-height: 8rem; resize: none; }
+.send { padding: 0.55rem 1rem; border-radius: 999px; color: var(--mv-on-accent); background: var(--mv-primary); font-weight: 700; }
+.send:disabled { opacity: 0.5; }
+.composer-error { padding: 0 1rem 0.6rem; background: var(--mv-card); }
+.readonly { display: flex; align-items: center; gap: 0.5rem; margin: 0; padding: 0.9rem 1rem; border-top: 1px solid var(--mv-border); color: var(--mv-muted); background: var(--mv-card); }
+
+.icon-btn { display: grid; flex: 0 0 auto; width: 2.4rem; height: 2.4rem; padding: 0; place-items: center; border-radius: 50%; color: var(--mv-text); background: var(--mv-control); }
+.icon-btn:hover { color: var(--mv-primary); background: var(--mv-control-hover); }
+/* Après .icon-btn, sinon son « display: grid » l'emporterait : la flèche retour ne sert que sur mobile. */
+.icon-btn.back { display: none; }
+
+.placeholder { display: grid; flex: 1; place-content: center; justify-items: center; gap: 0.6rem; padding: 2rem; color: var(--mv-muted); text-align: center; }
+.empty { display: grid; justify-items: center; gap: 0.6rem; padding: 1.5rem 1rem; color: var(--mv-muted); text-align: center; }
+.empty p { margin: 0; }
+.state { margin: 0; padding: 0.8rem 1rem; color: var(--mv-muted); }
+.state.centered { margin: auto; text-align: center; }
+.state.error { color: var(--mv-danger-strong); font-weight: 600; }
+.link { padding: 0; border: 0; color: var(--mv-primary); background: none; font-weight: 700; }
+.btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border: 1px solid transparent; border-radius: 999px; font-weight: 700; text-decoration: none; }
+.btn.primary { color: var(--mv-on-accent); background: var(--mv-primary); }
+.btn.ghost { color: var(--mv-text); border-color: var(--mv-border); background: var(--mv-card); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Mobile : une seule colonne (liste OU conversation). */
+@media (max-width: 900px) {
+  .messages {
+    grid-template-columns: minmax(0, 1fr);
+    height: calc(100dvh - var(--player-height, 4.75rem) - var(--bottom-nav-height, 4rem) - 5.5rem);
+    border-radius: 14px;
+  }
+  .messages.has-thread .list { display: none; }
+  .messages:not(.has-thread) .thread { display: none; }
+  .list { border-right: 0; }
+  .icon-btn.back { display: grid; }
+}

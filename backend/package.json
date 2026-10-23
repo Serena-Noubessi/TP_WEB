@@ -1,19 +1,26 @@
 {
-    "name": "gpc-api",
-    "version": "3.0.0",
-    "type": "module",
-    "scripts": {
-        "start": "node --env-file=.env src/server.js",
-        "start:local": "node src/server.js",
-        "test": "node --test"
-    },
-    "dependencies": {
-        "bcryptjs": "^3.0.2",
-        "cors": "^2.8.5",
-        "express": "^5.1.0",
-        "jsonwebtoken": "^9.0.2",
-        "mongoose": "^9.0.0",
-        "mongoose-aggregate-paginate-v2": "^1.1.5",
-        "multer": "^2.0.2"
-    }
+  "name": "gpc-api",
+  "version": "3.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env src/server.js",
+    "start:local": "node src/server.js",
+    "test": "node --env-file-if-exists=.env --test",
+    "backup": "node --env-file=.env scripts/backup-db.mjs",
+    "restore": "node --env-file=.env scripts/restore-db.mjs",
+    "migrate": "node --env-file=.env scripts/migrate.mjs",
+    "role": "node --env-file=.env scripts/set-role.mjs",
+    "demo:seed": "node --env-file=.env scripts/demo-seed.mjs",
+    "demo:reset": "node --env-file=.env scripts/demo-reset.mjs",
+    "demo:start": "node --env-file=.env scripts/demo-start.mjs"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^9.0.0",
+    "mongoose-aggregate-paginate-v2": "^1.1.5",
+    "multer": "^2.0.2"
+  }
 }

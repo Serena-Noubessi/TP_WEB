@@ -10,15 +10,24 @@
     <article class="card upload-card">
       <h2>Importer</h2>
       <label>Titre<input [formControl]="title" [disabled]="uploading()" /></label>
-      <label>Catégorie
+      <label>Style
         <select [formControl]="uploadCategory">
-          <option value="">Non classé</option>
           @for (category of categories; track category.id) {
             <option [value]="category.id">{{ category.label }}</option>
           }
         </select>
       </label>
-      <label>Fichier audio<input type="file" accept="audio/*" (change)="choose($event)" [disabled]="uploading()" /></label>
+      <label>Visibilité
+        <select [formControl]="uploadVisibility">
+          <option value="private">Privé — visible par moi seulement</option>
+          <option value="public">Public — visible par tous et dans la recherche</option>
+          <option value="friends">Amis choisis — les personnes que je choisis juste après l’envoi</option>
+        </select>
+      </label>
+      <label>Fichier audio<input type="file" [accept]="audioAccept" (change)="choose($event)" [disabled]="uploading()" /></label>
+      @if (checkingFile()) {
+        <p role="status">Vérification du fichier MPEG…</p>
+      }
       <label>Image de couverture (facultative)
         <input type="file" accept="image/jpeg,image/png,image/webp" (change)="chooseCover($event)" [disabled]="uploading()" />
       </label>
@@ -56,7 +65,7 @@
         <button type="button" (click)="load()">Actualiser</button>
       </div>
       <nav class="crates" aria-label="Catégories">
-        <button type="button" class="crate" [class.is-active]="categoryFilter() === ''" [attr.aria-pressed]="categoryFilter() === ''" (click)="selectCategory('')" style="--crate-color: #1d755e">
+        <button type="button" class="crate" [class.is-active]="categoryFilter() === ''" [attr.aria-pressed]="categoryFilter() === ''" (click)="selectCategory('')" style="--crate-color: var(--mv-primary)">
           <span class="crate-icon" aria-hidden="true"><app-icon name="library" /></span>
           <span class="crate-label">Tous</span>
           <span class="crate-count">{{ totalCount() ?? '…' }}</span>
@@ -105,6 +114,11 @@
                     <span class="category-badge"><app-icon [name]="category.icon" /> {{ category.label }}</span>
                     @if (track.online) {
                       <span class="track-format">En ligne</span>
+                    } @else {
+                      <span class="track-format" [class.is-public]="track.visibility === 'public'">
+                        <app-icon [name]="track.visibility === 'public' ? 'globe' : track.visibility === 'friends' ? 'users' : 'lock'" />
+                        {{ track.visibility === 'public' ? 'Public' : track.visibility === 'friends' ? 'Amis choisis' : 'Privé' }}
+                      </span>
                     }
                   </span>
                 </div>
@@ -166,6 +180,12 @@
                       <app-icon name="play" />
                       <span>{{ audioLoadingTrackId() === track.id ? 'Chargement…' : 'Lire' }}</span>
                     </button>
+                    @if (!track.online) {
+                      <button type="button" (click)="sharing.set(track)" [attr.aria-label]="'Visibilité et partage de ' + displayTitle(track)">
+                        <app-icon name="share" />
+                        <span>Partager</span>
+                      </button>
+                    }
                     <button type="button" class="delete-button" (click)="deleteTrack(track)" [disabled]="deletingTrackId() === track.id" [attr.aria-label]="'Supprimer ' + displayTitle(track)">
                       {{ deletingTrackId() === track.id ? 'Suppression…' : track.online ? 'Retirer' : 'Supprimer' }}
                     </button>
@@ -179,7 +199,7 @@
           </li>
         } @empty {
           @if (!error()) {
-            <li class="empty-tracks">{{ titleFilter().trim() || categoryFilter() ? 'Aucune piste ne correspond à ce filtre.' : 'Aucune piste.' }}</li>
+            <li class="empty-tracks">{{ titleFilter().trim() || categoryFilter() ? 'Aucune piste ne correspond à ce filtre.' : 'Vous n’avez encore aucune piste : importez un fichier avec le formulaire « Importer », ou ajoutez un morceau libre depuis internet.' }}</li>
           }
         }
       </ul>
@@ -191,3 +211,7 @@
     </article>
   </div>
 </section>
+
+@if (sharing(); as track) {
+  <app-share-dialog [track]="track" (changed)="shareChanged($event)" (closed)="sharing.set(null)" />
+}
