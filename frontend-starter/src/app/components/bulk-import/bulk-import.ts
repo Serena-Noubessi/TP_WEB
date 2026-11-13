@@ -1,3 +1,4 @@
+import { computeWaveform } from '../../shared/audio/waveform';
 import { AUDIO_ACCEPT, isAcceptedAudio, prepareAudioFile } from '../../shared/audio/audio-formats';
 import { Component, computed, inject, OnDestroy, output, signal } from '@angular/core';
 import { HttpErrorResponse, HttpEventType } from '@angular/common/http';
@@ -189,7 +190,8 @@ export class BulkImportComponent implements OnDestroy {
 
   private upload(file: File, title: string, style: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.service.upload(file, title, undefined, { style, visibility: 'private' }).subscribe({
+      // Forme d'onde et durée calculées avant l'envoi (si le décodage échoue, la piste part sans).
+      void computeWaveform(file).then((wave) => this.service.upload(file, title, undefined, { style, visibility: 'private', ...(wave ? { waveform: wave.peaks, durationSeconds: wave.duration } : {}) }).subscribe({
         next: (event) => {
           if (event.type === HttpEventType.Response) resolve();
         },
@@ -197,7 +199,7 @@ export class BulkImportComponent implements OnDestroy {
           console.error('[BulkImport] Envoi impossible', file.name, error);
           reject(error);
         },
-      });
+      }));
     });
   }
 

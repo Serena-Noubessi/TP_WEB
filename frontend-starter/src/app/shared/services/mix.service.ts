@@ -43,6 +43,7 @@ export interface PublishFields {
   visibility: TrackVisibility;
   style: string;
   durationSeconds?: number;
+  waveform?: number[];
   cover?: File;
 }
 
@@ -83,6 +84,7 @@ export class MixService {
     body.append('visibility', fields.visibility);
     body.append('style', fields.style);
     if (fields.durationSeconds) body.append('durationSeconds', String(fields.durationSeconds));
+    if (fields.waveform?.length) body.append('waveform', fields.waveform.join(','));
     if (fields.cover) body.append('cover', fields.cover);
     return this.http.post<Track>(`/api/mixes/${id}/publish`, body, { observe: 'events', reportProgress: true });
   }

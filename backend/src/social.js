@@ -4,6 +4,7 @@
  */
 import { Block } from "./models/Block.js";
 import { Friendship, pairKey } from "./models/Friendship.js";
+import { Follow } from "./models/Follow.js";
 import { Notification } from "./models/Notification.js";
 import { User } from "./models/User.js";
 
@@ -34,10 +35,10 @@ export async function hiddenIds(userId) {
  * conversation est réutilisée (son compteur augmente) au lieu d'en empiler une par message.
  * Une erreur de notification n'empêche jamais l'action principale : elle est seulement journalisée.
  */
-export async function notify({ userId, type, actorId, conversationId = null, trackId = null, trackTitle = null }) {
+export async function notify({ userId, type, actorId, conversationId = null, trackId = null, trackTitle = null, playlistId = null }) {
   try {
     // Section 9 : l'utilisateur peut couper certains types (les avis de modération restent toujours envoyés).
-    const pref = type.startsWith("remix_") ? "remix" : type;
+    const pref = type.startsWith("remix_") ? "remix" : type === "new_release" ? "follow" : type === "playlist_shared" ? "track_shared" : type;
     if (type !== "content_removed") {
       const user = await User.findById(userId).select("notificationPrefs").lean();
       if (user?.notificationPrefs?.[pref] === false) return;
@@ -50,8 +51,28 @@ export async function notify({ userId, type, actorId, conversationId = null, tra
       );
       return;
     }
-    await Notification.create({ userId, type, actorId, conversationId, trackId, trackTitle });
+    await Notification.create({ userId, type, actorId, conversationId, trackId, trackTitle, playlistId });
   } catch (error) {
     console.error(`[notifications] Notification ${type} non créée pour ${userId}`, error);
   }
 }
+
+/**
+ * Prévient les abonnés d'un artiste qu'il vient de publier une piste PUBLIQUE
+ * (envoi, passage en public, mix publié). 500 abonnés au maximum par publication.
+ * Ne bloque jamais l'action principale.
+ */
+export async function notifyFollowers(ownerId, track) {
+  try {
+    if (track.visibility !== "public") return 0;
+    const followers = await Follow.find({ followedId: ownerId }).select("followerId").limit(500).lean();
+    for (const follower of followers) {
+      await notify({ userId: follower.followerId, type: "new_release", actorId: ownerId, trackId: track._id, trackTitle: track.title });
+    }
+    return followers.length;
+  } catch (error) {
+    console.error(`[follows] Abonnés de ${ownerId} non prévenus`, error);
+    return 0;
+  }
+}
+

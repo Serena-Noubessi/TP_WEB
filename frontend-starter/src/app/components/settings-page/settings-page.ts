@@ -12,8 +12,10 @@ const NOTIFICATION_LABELS: { id: NotificationPref; label: string; help: string }
   { id: 'friend_request', label: 'Invitations d’amis', help: 'Quelqu’un vous invite à devenir amis' },
   { id: 'friend_accepted', label: 'Invitations acceptées', help: 'Quelqu’un accepte votre invitation' },
   { id: 'message', label: 'Messages', help: 'Nouveaux messages dans vos conversations' },
-  { id: 'track_shared', label: 'Pistes partagées', help: 'Un ami partage une piste avec vous' },
+  { id: 'track_shared', label: 'Pistes et playlists partagées', help: 'Un ami partage une piste ou une playlist avec vous' },
   { id: 'remix', label: 'Remixes', help: 'Demandes de remix et réponses à vos demandes' },
+  { id: 'comment', label: 'Commentaires', help: 'Quelqu’un commente une de vos pistes' },
+  { id: 'follow', label: 'Abonnements', help: 'Quelqu’un s’abonne à vous, ou un artiste que vous suivez publie une piste publique' },
 ];
 
 /**

@@ -32,6 +32,8 @@ const schema = new mongoose.Schema(
       message: { type: Boolean, default: true },
       track_shared: { type: Boolean, default: true },
       remix: { type: Boolean, default: true },
+      comment: { type: Boolean, default: true },
+      follow: { type: Boolean, default: true },
     },
     // Section 10 : compte suspendu par un administrateur (connexion refusée).
     suspendedAt: { type: Date, default: null },

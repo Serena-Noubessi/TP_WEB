@@ -135,3 +135,7 @@
 /* Texte d'aide : affichage en ligne (en « flex », un mot en gras devenait un bloc séparé, avec des espaces en trop). */
 .help { display: block; }
 .help app-icon { margin-right: 0.35rem; }
+
+.sub-title { margin: 1.1rem 0 0.5rem; font-size: 1rem; }
+.person .info a { color: inherit; text-decoration: none; }
+.person .info a:hover { color: var(--mv-primary); text-decoration: underline; }

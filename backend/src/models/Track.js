@@ -46,6 +46,8 @@ const schema = new mongoose.Schema(
       default: null,
     },
     mixProjectId: { type: mongoose.Schema.Types.ObjectId, ref: "MixProject", default: null },
+    // Demande 24 : forme d'onde (16 à 200 valeurs de 0 à 100), calculée par le navigateur.
+    waveform: { type: [Number], default: undefined },
     // Valeurs d'avant la migration 001, gardées pour pouvoir l'annuler.
     legacyTitle: { type: String, select: false },
     legacyCategory: { type: String, select: false },
@@ -87,6 +89,7 @@ schema.methods.toPublic = function () {
     kind: this.kind,
     durationSeconds: this.durationSeconds ?? null,
     credits: publicCredits(this.credits),
+    waveform: this.waveform?.length ? [...this.waveform] : null,
     coverUrl: this.coverStoredName
       ? `/api/tracks/${this.id}/cover`
       : null,

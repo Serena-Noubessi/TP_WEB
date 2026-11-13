@@ -8,7 +8,7 @@ export interface PrivacySettings {
   defaultVisibility: TrackVisibility;
 }
 
-export type NotificationPref = 'friend_request' | 'friend_accepted' | 'message' | 'track_shared' | 'remix';
+export type NotificationPref = 'friend_request' | 'friend_accepted' | 'message' | 'track_shared' | 'remix' | 'comment' | 'follow';
 
 export interface AccountSettings {
   privacy: PrivacySettings;

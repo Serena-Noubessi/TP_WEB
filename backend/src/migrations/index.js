@@ -3,5 +3,6 @@ import trackStyleVisibility from "./001-track-style-visibility.js";
 import libraryAccess from "./002-library-access.js";
 import friendsMessages from "./003-friends-messages.js";
 import mixesSettingsAdmin from "./004-mixes-settings-admin.js";
+import commentsFollowsWaveform from "./005-comments-follows-waveform.js";
 
-export const migrations = [trackStyleVisibility, libraryAccess, friendsMessages, mixesSettingsAdmin];
+export const migrations = [trackStyleVisibility, libraryAccess, friendsMessages, mixesSettingsAdmin, commentsFollowsWaveform];

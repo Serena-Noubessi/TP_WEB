@@ -32,7 +32,10 @@ import { ReportDialogComponent } from '../report-dialog/report-dialog';
           <span class="avatar" aria-hidden="true">{{ p.name.charAt(0).toUpperCase() }}</span>
           <div class="who">
             <h1>{{ p.name }}</h1>
-            <p>{{ p.friendCount }} ami(s) · membre depuis {{ date(p.memberSince) }}</p>
+            <p>
+              {{ p.friendCount }} ami(s) · <span data-testid="followers">{{ p.followers ?? 0 }} abonné(s)</span> · {{ p.following ?? 0 }} abonnement(s) ·
+              membre depuis {{ date(p.memberSince) }}
+            </p>
           </div>
           <div class="actions">
             @switch (p.relation) {
@@ -51,6 +54,11 @@ import { ReportDialogComponent } from '../report-dialog/report-dialog';
               }
             }
             @if (p.relation !== 'self') {
+              <!-- S'abonner : recevoir ses nouvelles créations publiques dans « Fil d'actualité » (sans être ami). -->
+              <button type="button" class="btn" [class.primary]="!p.isFollowing" [class.ghost]="p.isFollowing" (click)="toggleFollow()" [disabled]="busy()" [attr.aria-pressed]="!!p.isFollowing"
+                [title]="p.isFollowing ? 'Se désabonner' : 'Suivre ses nouvelles créations publiques'">
+                <app-icon [name]="p.isFollowing ? 'user-check' : 'bell'" /> {{ p.isFollowing ? 'Abonné(e)' : 'S’abonner' }}
+              </button>
               @if (confirmBlock()) {
                 <span class="confirm" role="alertdialog" aria-label="Confirmer le blocage">
                   Bloquer {{ p.name }} ? Vous ne pourrez plus échanger, et ses accès à vos pistes seront retirés.
@@ -79,6 +87,26 @@ import { ReportDialogComponent } from '../report-dialog/report-dialog';
                 <app-track-tile [track]="track" (play)="play(i)" />
               }
             </div>
+          }
+        </section>
+        <section aria-labelledby="playlists-title">
+          <h2 id="playlists-title">Playlists</h2>
+          @if (!p.playlists?.length) {
+            <p class="state">
+              @if (p.relation === 'self') { Vous n’avez encore aucune playlist. } @else { Aucune playlist publique ou partagée avec vous. }
+            </p>
+          } @else {
+            <ul class="playlists">
+              @for (playlist of p.playlists; track playlist.id) {
+                <li>
+                  <a [routerLink]="['/p', playlist.id]">
+                    <app-icon name="list-music" size="1.4rem" />
+                    <span class="pl-name">{{ playlist.name }}</span>
+                    <small>{{ playlist.trackCount }} piste(s) · {{ playlistLabel(playlist.visibility, p.relation === 'self') }}</small>
+                  </a>
+                </li>
+              }
+            </ul>
           }
         </section>
         @if (reporting()) {
@@ -113,6 +141,12 @@ import { ReportDialogComponent } from '../report-dialog/report-dialog';
     .tag { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.75rem; border-radius: 999px; background: rgb(255 255 255 / 20%); font-weight: 700; }
     .confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; padding: 0.5rem 0.7rem; border-radius: 12px; background: rgb(0 0 0 / 22%); font-size: 0.85rem; }
     h2 { margin: 0 0 0.7rem; font-size: 1.2rem; }
+    .playlists { display: grid; gap: 0.6rem; margin: 0; padding: 0; list-style: none; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); }
+    .playlists a { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.1rem 0.6rem; align-items: center; padding: 0.75rem 0.9rem; border: 1px solid var(--mv-border); border-radius: 14px; color: var(--mv-text); background: var(--mv-card); text-decoration: none; }
+    .playlists a:hover { border-color: var(--mv-border-strong); background: var(--mv-control-hover); }
+    .playlists app-icon { grid-row: span 2; color: var(--mv-primary); }
+    .pl-name { overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .playlists small { color: var(--mv-muted); }
     .tiles { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); }
     .state { margin: 0; padding: 0.8rem; color: var(--mv-muted); }
     .state.error { display: grid; gap: 0.5rem; color: var(--mv-danger-strong); font-weight: 600; }
@@ -163,6 +197,29 @@ export class UserProfilePageComponent implements OnInit {
         this.actionError.set(httpMessage(error, 'L’action n’a pas pu être faite.'));
       },
     });
+  }
+
+  toggleFollow(): void {
+    const p = this.profile()!;
+    this.busy.set(true);
+    this.actionError.set('');
+    (p.isFollowing ? this.social.unfollow(p.id) : this.social.follow(p.id)).subscribe({
+      next: (state) => {
+        this.busy.set(false);
+        this.profile.update((current) => (current ? { ...current, isFollowing: state.following, followers: state.followers } : current));
+        this.flash.set(state.following ? `Vous suivez ${p.name} : ses nouvelles créations publiques apparaîtront dans votre fil.` : `Vous ne suivez plus ${p.name}.`);
+      },
+      error: (error: unknown) => {
+        this.busy.set(false);
+        this.actionError.set(httpMessage(error, 'L’abonnement n’a pas pu être modifié.'));
+      },
+    });
+  }
+
+  playlistLabel(visibility: string, mine: boolean): string {
+    if (visibility === 'public') return 'publique';
+    if (visibility === 'friends') return mine ? 'amis choisis' : 'partagée avec vous';
+    return 'privée';
   }
 
   block(): void {

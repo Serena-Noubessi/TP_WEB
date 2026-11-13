@@ -6,11 +6,13 @@ import { AudioPlayerService } from '../../shared/services/audio-player.service';
 import { CoverImageComponent } from '../cover-image/cover-image';
 import { IconComponent } from '../icon/icon';
 import { ReactionButtonsComponent } from '../reaction-buttons/reaction-buttons';
+import { WaveformComponent } from '../waveform/waveform';
+import { WaveformService } from '../../shared/services/waveform.service';
 
 /** Carte d'une piste : pochette, titre, style et auteur, bouton de lecture, j'aime, favori et playlist. */
 @Component({
   selector: 'app-track-tile',
-  imports: [IconComponent, ReactionButtonsComponent, CoverImageComponent, RouterLink],
+  imports: [IconComponent, ReactionButtonsComponent, CoverImageComponent, RouterLink, WaveformComponent],
   template: `
     @let item = track();
     @let category = categoryOf(item);
@@ -26,7 +28,16 @@ import { ReactionButtonsComponent } from '../reaction-buttons/reaction-buttons';
           <span class="kind">Mixage</span>
         }
       </div>
-      <h3 [title]="displayTitle(item)">{{ displayTitle(item) }}</h3>
+      @if (!item.online) {
+        <app-waveform class="wave" [peaks]="waveforms.of(item)" [progress]="isCurrent() && player.duration() ? player.time() / player.duration() : null" [seekable]="isCurrent()" (seek)="player.seek($event * player.duration())" />
+      }
+      <h3 [title]="displayTitle(item)">
+        @if (item.online) {
+          {{ displayTitle(item) }}
+        } @else {
+          <a class="title" [routerLink]="['/t', item.id]">{{ displayTitle(item) }}</a>
+        }
+      </h3>
       <p class="meta">
         <span class="style"><app-icon [name]="category.icon" /> {{ category.label }}</span>
         @if (item.author?.id) {
@@ -85,6 +96,9 @@ import { ReactionButtonsComponent } from '../reaction-buttons/reaction-buttons';
       font-size: 0.7rem;
       font-weight: 700;
     }
+    .wave { --wave-height: 1.5rem; --wave-color: color-mix(in srgb, var(--cat) 75%, var(--mv-text)); }
+    a.title { color: inherit; text-decoration: none; }
+    a.title:hover, a.title:focus-visible { color: var(--mv-primary); text-decoration: underline; }
     h3 { overflow: hidden; margin: 0; font-size: 0.95rem; text-overflow: ellipsis; white-space: nowrap; }
     .meta { display: flex; flex-wrap: wrap; gap: 0.2rem 0.6rem; margin: 0; color: var(--mv-muted); font-size: 0.8rem; }
     .style { display: inline-flex; align-items: center; gap: 0.25rem; color: color-mix(in srgb, var(--cat) 70%, var(--mv-text)); font-weight: 600; }
@@ -95,6 +109,7 @@ import { ReactionButtonsComponent } from '../reaction-buttons/reaction-buttons';
 })
 export class TrackTileComponent {
   readonly player = inject(AudioPlayerService);
+  readonly waveforms = inject(WaveformService);
   readonly track = input.required<Track>();
   readonly play = output<void>();
   /** Affiche les boutons j'aime / favori / playlist (vrai par défaut). */

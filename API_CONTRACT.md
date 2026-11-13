@@ -464,3 +464,98 @@ Aucune route n'est ajoutée ni modifiée. Le comportement général change ainsi
 
 Ils sont **enregistrés avec le type `audio/mpeg`**, pour que les navigateurs les lisent comme du son. Le site vérifie avant l'envoi que le son est lisible : une vidéo MPEG que le navigateur ne sait pas décoder est refusée, avec le conseil de la convertir en MP3. Les autres vidéos (`video/mp4`…) restent refusées (`400`).
 
+
+
+# MOST VIBE — forme d'onde, téléchargement, commentaires, abonnements, playlists partagées (02/11/2026)
+
+Règle commune : **les droits d'écoute s'appliquent partout**. Télécharger ou commenter une piste demande le droit de l'écouter : être le propriétaire, ou piste publique, ou accès « Amis choisis » actif. Ce droit est vérifié à chaque requête.
+
+## Forme d'onde
+
+- **Champ `waveform` d'une piste :** tableau de 16 à 200 entiers entre 0 et 100. Il vaut `null` tant qu'elle n'a pas été calculée.
+- **Où le champ est renvoyé :** par toutes les routes qui renvoient des pistes. Les routes publiques ajoutent aussi `commentCount`.
+- **Calcul :** le **navigateur** calcule la forme d'onde, car il sait décoder le son, ce que le serveur ne fait pas. Elle est ensuite envoyée :
+  - dans le formulaire `POST /tracks` et `POST /mixes/:id/publish`, comme champ `waveform` : nombres séparés par des virgules (`"12,40,100,…"`) ;
+  - dans `PATCH /tracks/:id` (`{ waveform: [..] }`). Seul le propriétaire peut le faire. Ainsi, le site complète les pistes envoyées avant cet ajout.
+- **Erreur :** `400` si le format est invalide (nombre de valeurs, valeurs hors 0-100).
+
+## Téléchargement
+
+### GET `/tracks/:id/download`
+
+- **Authentification :** facultative (jeton envoyé s'il existe).
+- **Réponse `200` :** le fichier d'origine.
+  - En-tête `Content-Disposition: attachment` avec le titre de la piste comme nom de fichier. Cet en-tête est exposé au site par CORS.
+- **Erreurs :**
+  - `401` : visiteur, piste non publique ;
+  - `403` : pas le droit d'écouter ;
+  - `404` : piste inconnue.
+
+## Commentaires
+
+Un commentaire a la forme `{ id, text, author: { id, name }, createdAt, mine, canDelete }`.
+
+| Méthode | Route | Auth | Corps | Réponses |
+|---|---|---|---|---|
+| GET | `/tracks/:id/comments?before=<date ISO>` | facultative | — | `200 { total, hasMore, canComment, comments }`, du plus récent au plus ancien, 30 par page (`before` = date du dernier reçu pour la suite). Les commentaires des comptes bloqués (dans un sens ou dans l'autre) sont masqués. `401` visiteur et piste non publique ; `403` pas le droit d'écouter ; `404` |
+| POST | `/tracks/:id/comments` | oui | `{ text }` (1 à 1000 caractères) | `201` commentaire ; `400` texte vide ou trop long ; `403` pas le droit d'écouter, ou blocage avec l'auteur de la piste ; `404`. Le propriétaire reçoit une notification `comment` |
+| DELETE | `/comments/:id` | oui | — | `204` ; `403` si je ne suis ni l'auteur, ni le propriétaire de la piste, ni administrateur (piste publique) ; `404` |
+
+Supprimer une piste ou un compte supprime aussi ses commentaires.
+
+## Abonnements (suivre un artiste)
+
+S'abonner ne demande pas l'accord de l'autre personne. On reçoit seulement les créations **publiques** de l'artiste :
+- elles apparaissent dans le fil d'activité ;
+- une notification `new_release` arrive à chaque nouvelle piste publique, que la piste soit envoyée en public, passée en public ou publiée comme mix.
+
+| Méthode | Route | Corps | Réponses |
+|---|---|---|---|
+| POST | `/users/:id/follow` | — | `201 { following: true, followers }` (`200` si déjà abonné) ; `400` soi-même ; `403` blocage ; `404` profil inconnu. Notification `follow` |
+| DELETE | `/users/:id/follow` | — | `200 { following: false, followers }` |
+| GET | `/me/follows` | — | `200 { following, followers }`, chaque élément `{ user: { id, name }, since }` |
+
+Un blocage supprime les abonnements dans les deux sens.
+
+**Routes modifiées :**
+- `GET /users/:id/profile` ajoute `followers`, `following`, `isFollowing` et `playlists`. `playlists` contient toutes mes playlists sur mon propre profil. Sur le profil d'un autre membre, elle contient ses playlists publiques et celles qu'il a partagées avec moi.
+- `GET /feed` ajoute les pistes publiques des artistes suivis et renvoie `followingCount`.
+
+## Playlists partagées
+
+- **Nouvelle visibilité :** `visibility` vaut maintenant `"private" | "friends" | "public"`.
+- **Nouveau champ :** une playlist contient aussi `sharedCount`, le nombre d'amis qui y ont accès.
+- **Qui voit une playlist « Amis choisis » :** les amis listés dans `sharedWith`.
+- **Les pistes ne sont pas partagées avec la playlist :** chaque personne n'y voit que les pistes qu'elle a déjà le droit d'écouter.
+
+| Méthode | Route | Auth | Corps | Réponses |
+|---|---|---|---|---|
+| GET | `/playlists/:id` | **facultative** (changé) | — | `200` playlist + `owner`, `mine`, `tracks`, `hiddenCount`, et `sharedWith` (propriétaire seulement) ; `404` inconnue, non visible par moi, ou blocage |
+| PATCH | `/playlists/:id` | oui | `visibility: "private"` | retire aussi tous les partages |
+| POST | `/playlists/:id/share` | oui | `{ userIds }` (1 à 50) | `201` playlist + `sharedWith` ; une playlist privée passe en `friends` ; `400` ; `403` si une personne n'est pas mon amie ; `404` pas à moi. Notification `playlist_shared` à chaque nouvelle personne |
+| DELETE | `/playlists/:id/share/:userId` | oui | — | `200` playlist + `sharedWith` ; `404` |
+| GET | `/me/shared-playlists` | oui | — | `200 { playlists }` : playlists partagées avec moi, chacune avec `owner` |
+
+Retirer un ami ou le bloquer retire aussi les partages de playlists entre nous.
+
+## Notifications et paramètres
+
+- **Nouveaux types de notification :**
+  - `comment` ;
+  - `follow` ;
+  - `new_release` ;
+  - `playlist_shared`, qui ajoute le champ `playlist: { id, name }` aux notifications.
+- **Nouvelles préférences dans `PATCH /settings` :** `notificationPrefs.comment` et `notificationPrefs.follow` (vrai par défaut).
+  - `follow` règle aussi les notifications `new_release`.
+  - `track_shared` règle aussi les notifications `playlist_shared`.
+
+## Migration 005
+
+- **005-comments-follows-waveform :**
+  - crée les collections `comments` et `follows` avec leurs index ;
+  - ajoute `sharedWith: []` aux playlists qui n'en ont pas.
+- **Annulation (`down`) :**
+  - les collections non vides sont renommées (`rollback005_…`) ;
+  - les partages de playlists sont copiés dans `rollback005_playlistshares` ;
+  - les playlists `friends` repassent `private` ;
+  - le champ `sharedWith` est retiré.

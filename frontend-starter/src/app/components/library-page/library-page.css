@@ -104,6 +104,9 @@
 .info { display: grid; flex: 1 1 12rem; min-width: 0; }
 .info strong, .info small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .info small { color: var(--mv-muted); }
+.row-wave { max-width: 18rem; margin-top: 0.2rem; --wave-height: 1.1rem; }
+.title-link { color: inherit; text-decoration: none; }
+.title-link:hover, .title-link:focus-visible { color: var(--mv-primary); text-decoration: underline; }
 .actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 
 .badge {
@@ -194,3 +197,5 @@ button.badge { cursor: pointer; }
 /* Texte d'aide : affichage en ligne (en « flex », un mot en gras devenait un bloc séparé, avec des espaces en trop). */
 .help { display: block; }
 .help app-icon { margin-right: 0.35rem; }
+
+.sub-title { margin: 1.4rem 0 0.6rem; font-size: 1.05rem; }

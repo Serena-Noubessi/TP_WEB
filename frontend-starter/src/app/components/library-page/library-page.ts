@@ -6,15 +6,19 @@ import { Track, TrackVisibility } from '../../shared/models/track.model';
 import { IconName } from '../../shared/icons/icons';
 import { AudioPlayerService } from '../../shared/services/audio-player.service';
 import { AuthService } from '../../shared/services/auth.service';
-import { Album, httpMessage, LibraryService, Playlist, PlaylistDetail, SharedTrack } from '../../shared/services/library.service';
+import { Album, httpMessage, LibraryService, Playlist, PlaylistDetail, PlaylistVisibility, SharedPlaylist, SharedTrack } from '../../shared/services/library.service';
 import { PublicService } from '../../shared/services/public.service';
 import { ReactionsService } from '../../shared/services/reactions.service';
 import { MixProjectSummary, MixService, RemixRequest } from '../../shared/services/mix.service';
 import { TrackService } from '../../shared/services/track.service';
+import { WaveformService } from '../../shared/services/waveform.service';
+import { DownloadService, downloadErrorMessage } from '../../shared/services/download.service';
 import { CoverImageComponent } from '../cover-image/cover-image';
 import { IconComponent } from '../icon/icon';
 import { ShareDialogComponent } from '../share-dialog/share-dialog';
+import { PlaylistShareDialogComponent } from '../playlist-share-dialog/playlist-share-dialog';
 import { TrackTileComponent } from '../track-tile/track-tile';
+import { WaveformComponent } from '../waveform/waveform';
 
 type Tab = 'files' | 'albums' | 'playlists' | 'favorites' | 'shared' | 'mixes' | 'profile';
 
@@ -42,7 +46,7 @@ const FILES_PER_PAGE = 10;
  * avec moi, les projets de mixage et mon profil. Tout vient de la base.
  */
 @Component({
-  imports: [RouterLink, IconComponent, TrackTileComponent, ShareDialogComponent, CoverImageComponent],
+  imports: [RouterLink, IconComponent, TrackTileComponent, ShareDialogComponent, CoverImageComponent, WaveformComponent, PlaylistShareDialogComponent],
   templateUrl: './library-page.html',
   styleUrl: './library-page.css',
 })
@@ -53,6 +57,8 @@ export class LibraryPageComponent implements OnInit {
   private readonly trackService = inject(TrackService);
   private readonly publicService = inject(PublicService);
   private readonly mixes = inject(MixService);
+  readonly waveforms = inject(WaveformService);
+  private readonly downloads = inject(DownloadService);
   readonly auth = inject(AuthService);
   readonly player = inject(AudioPlayerService);
   readonly reactions = inject(ReactionsService);
@@ -84,6 +90,8 @@ export class LibraryPageComponent implements OnInit {
   readonly playlistsError = signal('');
   readonly playlistMessage = signal('');
   readonly openPlaylist = signal<PlaylistDetail | null>(null);
+  readonly sharingPlaylist = signal<Playlist | null>(null);
+  readonly sharedPlaylists = signal<SharedPlaylist[] | null>(null);
   readonly confirmDeletePlaylist = signal('');
 
   // Favoris et partages
@@ -144,6 +152,8 @@ export class LibraryPageComponent implements OnInit {
       next: (result) => {
         const docs = 'docs' in result ? result.docs : result.items;
         this.files.set(docs);
+        // Pistes envoyées avant l'arrivée des formes d'onde : le navigateur les complète.
+        this.waveforms.backfill(docs);
         this.filesPage.set(result.page ?? page);
         this.filesTotalPages.set(Math.max(1, 'docs' in result ? result.totalPages : result.pages));
         this.filesTotal.set('docs' in result ? result.totalDocs : result.total);
@@ -209,7 +219,7 @@ export class LibraryPageComponent implements OnInit {
       this.playlistMessage.set('Donnez un nom à la playlist.');
       return;
     }
-    this.library.createPlaylist({ name: name.trim(), visibility: visibility === 'public' ? 'public' : 'private' }).subscribe({
+    this.library.createPlaylist({ name: name.trim(), visibility: (['private', 'friends', 'public'].includes(visibility) ? visibility : 'private') as PlaylistVisibility }).subscribe({
       next: (playlist) => {
         this.playlists.update((list) => [playlist, ...(list ?? [])]);
         this.playlistMessage.set(`Playlist « ${playlist.name} » créée. Ajoutez-y des pistes avec le bouton « Ajouter à une playlist ».`);
@@ -225,15 +235,12 @@ export class LibraryPageComponent implements OnInit {
     });
   }
 
-  togglePlaylistVisibility(playlist: Playlist): void {
-    const visibility = playlist.visibility === 'public' ? 'private' : 'public';
-    this.library.updatePlaylist(playlist.id, { visibility }).subscribe({
-      next: (updated) => {
-        this.playlists.update((list) => list?.map((item) => (item.id === updated.id ? updated : item)) ?? null);
-        this.openPlaylist.update((detail) => (detail?.id === updated.id ? { ...detail, ...updated } : detail));
-      },
-      error: (error: unknown) => this.playlistMessage.set(httpMessage(error, 'Modification impossible.')),
-    });
+  /** Retour de la fenêtre de partage : visibilité ou nombre d'amis modifiés. */
+  playlistChanged(updated: Playlist): void {
+    const merge = (item: Playlist) => (item.id === updated.id ? { ...item, ...updated } : item);
+    this.playlists.update((list) => list?.map(merge) ?? null);
+    this.sharingPlaylist.update((current) => (current ? merge(current) : current));
+    this.openPlaylist.update((detail) => (detail?.id === updated.id ? { ...detail, ...updated } : detail));
   }
 
   deletePlaylist(playlist: Playlist): void {
@@ -273,6 +280,10 @@ export class LibraryPageComponent implements OnInit {
     this.library.shared().subscribe({
       next: ({ docs }) => this.shared.set(docs),
       error: (error: unknown) => this.sharedError.set(httpMessage(error, 'Impossible de charger les pistes partagées.')),
+    });
+    this.library.sharedPlaylists().subscribe({
+      next: ({ playlists }) => this.sharedPlaylists.set(playlists),
+      error: () => this.sharedPlaylists.set([]),
     });
   }
 
@@ -341,6 +352,10 @@ export class LibraryPageComponent implements OnInit {
       next: () => this.profileMessage.set('Nom enregistré.'),
       error: (error: unknown) => this.profileError.set(httpMessage(error, 'Le nom n’a pas pu être enregistré.')),
     });
+  }
+
+  download(track: Track): void {
+    this.downloads.download(track).catch((error: unknown) => this.reactions.flash.set(downloadErrorMessage(error)));
   }
 
   date(value: string): string {

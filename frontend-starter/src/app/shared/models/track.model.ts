@@ -24,6 +24,10 @@ export interface Track {
   durationSeconds?: number | null;
   /** Crédits d'un mixage publié, figés par le serveur (section 8). */
   credits?: TrackCredits | null;
+  /** Forme d'onde : 16 à 200 valeurs de 0 à 100 (null tant qu'elle n'a pas été calculée). */
+  waveform?: number[] | null;
+  /** Nombre de commentaires (routes publiques). */
+  commentCount?: number;
   /**
    * Présent uniquement pour un morceau ajouté depuis internet. Le fichier n'est
    * pas stocké par l'API : seule cette référence est enregistrée en base
@@ -49,6 +53,7 @@ export interface TrackMeta {
   tags?: string;
   album?: string;
   durationSeconds?: number;
+  waveform?: number[];
 }
 
 /** Origine et droits d'un morceau ajouté depuis internet. */

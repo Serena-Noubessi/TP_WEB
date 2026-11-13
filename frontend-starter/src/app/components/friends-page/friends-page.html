@@ -25,21 +25,21 @@
     @case ('feed') {
       <section class="panel" aria-labelledby="feed-title">
         <h2 id="feed-title">Fil d’activité</h2>
-        <p class="help"><app-icon name="lock" /> Seules les créations de vos amis que vous avez le droit d’écouter apparaissent ici (publiques, ou partagées avec vous).</p>
+        <p class="help"><app-icon name="lock" /> Ici : les créations de vos amis que vous avez le droit d’écouter (publiques, ou partagées avec vous), et les créations publiques des artistes auxquels vous êtes abonné(e).</p>
         @if (feedError()) {
           <div class="state error" role="alert">{{ feedError() }} <button type="button" class="link" (click)="loadFeed()">Réessayer</button></div>
         } @else if (feed() === null) {
           <p class="state" role="status">Chargement du fil…</p>
-        } @else if (!friendCount()) {
+        } @else if (!friendCount() && !followingCount()) {
           <div class="empty">
             <app-icon name="users" size="2rem" />
-            <p>Vous n’avez pas encore d’amis. Trouvez des personnes par leur nom et invitez-les : leurs nouvelles créations s’afficheront ici.</p>
+            <p>Vous n’avez pas encore d’amis ni d’abonnements. Invitez des personnes, ou abonnez-vous à un artiste depuis son profil : leurs nouvelles créations s’afficheront ici.</p>
             <button type="button" class="btn primary" (click)="selectTab('find')"><app-icon name="search" /> Trouver des amis</button>
           </div>
         } @else if (!feed()!.length) {
           <div class="empty">
             <app-icon name="sparkles" size="2rem" />
-            <p>Vos amis n’ont encore rien publié que vous puissiez écouter.</p>
+            <p>Vos amis et les artistes que vous suivez n’ont encore rien publié que vous puissiez écouter.</p>
           </div>
         } @else {
           <ul class="feed">
@@ -194,6 +194,47 @@
               </li>
             }
           </ul>
+        }
+      </section>
+    }
+
+    <!-- ======================= Abonnements ======================= -->
+    @case ('follows') {
+      <section class="panel" aria-labelledby="follows-title">
+        <h2 id="follows-title">Abonnements</h2>
+        <p class="help"><app-icon name="info" /> S’abonner à un artiste (bouton « S’abonner » sur son profil) ne demande pas d’être ami : vous recevez ses nouvelles créations publiques dans le fil et une notification.</p>
+        @if (followsError()) {
+          <div class="state error" role="alert">{{ followsError() }} <button type="button" class="link" (click)="loadFollows()">Réessayer</button></div>
+        } @else if (follows() === null) {
+          <p class="state" role="status">Chargement…</p>
+        } @else {
+          <h3 class="sub-title">Artistes que je suis ({{ follows()!.following.length }})</h3>
+          @if (!follows()!.following.length) {
+            <p class="state">Vous ne suivez encore personne. Ouvrez le profil d’un artiste (depuis Explorer ou une piste) et cliquez sur « S’abonner ».</p>
+          } @else {
+            <ul class="people">
+              @for (item of follows()!.following; track item.user.id) {
+                <li class="person">
+                  <span class="avatar" aria-hidden="true">{{ initial(item.user.name) }}</span>
+                  <span class="info"><a [routerLink]="['/u', item.user.id]"><strong>{{ item.user.name }}</strong></a><small>Suivi(e) depuis le {{ date(item.since) }}</small></span>
+                  <span class="actions"><button type="button" class="btn small ghost" (click)="unfollow(item.user)" [disabled]="busy() === item.user.id">Se désabonner</button></span>
+                </li>
+              }
+            </ul>
+          }
+          <h3 class="sub-title">Mes abonnés ({{ follows()!.followers.length }})</h3>
+          @if (!follows()!.followers.length) {
+            <p class="state">Personne ne vous suit encore. Rendez vos créations publiques pour vous faire connaître.</p>
+          } @else {
+            <ul class="people">
+              @for (item of follows()!.followers; track item.user.id) {
+                <li class="person">
+                  <span class="avatar" aria-hidden="true">{{ initial(item.user.name) }}</span>
+                  <span class="info"><a [routerLink]="['/u', item.user.id]"><strong>{{ item.user.name }}</strong></a><small>Abonné(e) depuis le {{ date(item.since) }}</small></span>
+                </li>
+              }
+            </ul>
+          }
         }
       </section>
     }

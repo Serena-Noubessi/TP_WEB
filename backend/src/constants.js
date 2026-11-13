@@ -15,7 +15,8 @@ export const TRACK_KINDS = ["track", "mix"];
 export const ROLES = ["user", "admin"];
 
 /** Types de notification qu'un utilisateur peut couper dans ses paramètres (section 9). */
-export const NOTIFICATION_PREFS = ["friend_request", "friend_accepted", "message", "track_shared", "remix"];
+// « comment » : commentaires sur mes pistes ; « follow » : nouveaux abonnés et nouvelles publications des artistes suivis.
+export const NOTIFICATION_PREFS = ["friend_request", "friend_accepted", "message", "track_shared", "remix", "comment", "follow"];
 
 /** Paramètres par défaut d'un compte (section 9). */
 export const DEFAULT_PRIVACY = { allowFriendRequests: true, showInSearch: true, defaultVisibility: "private" };

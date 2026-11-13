@@ -1,11 +1,12 @@
 /**
  * Suppression complète d'une piste : métadonnées liées (réactions, accès,
- * entrées de playlist, demandes de remix) puis fichiers sur le disque.
+ * entrées de playlist, demandes de remix, commentaires) puis fichiers sur le disque.
  * Utilisée par la suppression d'une piste, la suppression d'un compte
  * (section 9) et la modération (section 10).
  */
 import fsPromises from "node:fs/promises";
 import path from "node:path";
+import { Comment } from "./models/Comment.js";
 import { Playlist } from "./models/Playlist.js";
 import { Reaction } from "./models/Reaction.js";
 import { RemixRequest } from "./models/RemixRequest.js";
@@ -25,6 +26,7 @@ export async function purgeTrack(track) {
     TrackAccess.deleteMany({ trackId: track._id }),
     Playlist.updateMany({ trackIds: track._id }, { $pull: { trackIds: track._id } }),
     RemixRequest.deleteMany({ trackId: track._id }),
+    Comment.deleteMany({ trackId: track._id }),
   ]);
   const failed = [];
   for (const name of [track.storedName, track.coverStoredName].filter(Boolean)) {

@@ -12,7 +12,8 @@ import { IconComponent } from '../icon/icon';
 import { TrackService } from '../../shared/services/track.service';
 import { OnlineTrackAddComponent } from '../online-track-add/online-track-add';
 import { ShareDialogComponent } from '../share-dialog/share-dialog';
-import { measureDuration } from '../../shared/audio/duration';
+import { computeWaveform } from '../../shared/audio/waveform';
+import { WaveformService } from '../../shared/services/waveform.service';
 import { AUDIO_ACCEPT, AUDIO_FORMATS_LABEL, isAcceptedAudio, isMpegVariant, prepareAudioFile } from '../../shared/audio/audio-formats';
 import { SettingsService } from '../../shared/services/settings.service';
 import { httpMessage } from '../../shared/services/library.service';
@@ -43,6 +44,7 @@ export class TracksPageComponent implements OnDestroy {
   readonly sharing = signal<Track | null>(null);
   private readonly settingsService = inject(SettingsService);
   private readonly auth = inject(AuthService);
+  private readonly waveforms = inject(WaveformService);
 
   readonly tracks = signal<Track[]>([]);
   readonly page = signal(1);
@@ -83,6 +85,7 @@ export class TracksPageComponent implements OnDestroy {
   coverFile?: File;
   /** Durée du fichier choisi, en secondes (mesurée par le navigateur). */
   private fileDuration?: number;
+  private fileWaveform?: number[];
   /** Vérification d'un fichier MPEG en cours. */
   readonly checkingFile = signal(false);
   readonly audioAccept = AUDIO_ACCEPT;
@@ -161,10 +164,13 @@ export class TracksPageComponent implements OnDestroy {
   private useFile(file: File): void {
     this.file = file;
     console.debug('[TracksPage] Fichier sélectionné', this.file?.name);
-    // Durée mesurée en arrière-plan dès le choix du fichier ; envoyée avec la piste si elle est prête.
+    // Durée et forme d'onde calculées en arrière-plan dès le choix du fichier ; envoyées avec la piste si elles sont prêtes.
     this.fileDuration = undefined;
-    void measureDuration(file).then((seconds) => {
-      if (this.file === file && seconds) this.fileDuration = seconds;
+    this.fileWaveform = undefined;
+    void computeWaveform(file).then((result) => {
+      if (this.file !== file || !result) return;
+      if (result.duration) this.fileDuration = result.duration;
+      this.fileWaveform = result.peaks;
     });
   }
 
@@ -217,6 +223,7 @@ export class TracksPageComponent implements OnDestroy {
         console.debug('[TracksPage] Pistes chargées', docs.length);
         this.tracks.set(docs);
         this.loadCovers(docs);
+        this.waveforms.backfill(docs);
         this.pages.set(Math.max(1, totalPages));
         this.loading.set(false);
       },
@@ -309,7 +316,7 @@ export class TracksPageComponent implements OnDestroy {
     this.uploading.set(true);
     this.uploadProgress.set(null);
     const title = this.title.value || this.file.name;
-    this.service.upload(this.file, title, this.coverFile, { style: this.uploadCategory.value, visibility: this.uploadVisibility.value, durationSeconds: this.fileDuration }).subscribe({
+    this.service.upload(this.file, title, this.coverFile, { style: this.uploadCategory.value, visibility: this.uploadVisibility.value, durationSeconds: this.fileDuration, waveform: this.fileWaveform }).subscribe({
       next: (event) => {
         if (event.type === HttpEventType.UploadProgress) {
           this.uploadProgress.set(

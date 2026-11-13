@@ -7,15 +7,16 @@ import { Track } from '../../shared/models/track.model';
 import { AudioPlayerService } from '../../shared/services/audio-player.service';
 import { CountersService } from '../../shared/services/counters.service';
 import { httpMessage, UserSummary } from '../../shared/services/library.service';
-import { FeedItem, FriendLink, FriendsResponse, SocialService, UserSearchResult } from '../../shared/services/social.service';
+import { FeedItem, FollowLink, FriendLink, FriendsResponse, SocialService, UserSearchResult } from '../../shared/services/social.service';
 import { IconComponent } from '../icon/icon';
 import { TrackTileComponent } from '../track-tile/track-tile';
 
-type Tab = 'feed' | 'friends' | 'invitations' | 'find' | 'blocked';
+type Tab = 'feed' | 'friends' | 'follows' | 'invitations' | 'find' | 'blocked';
 
 const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: 'feed', label: 'Fil d’activité', icon: 'sparkles' },
   { id: 'friends', label: 'Mes amis', icon: 'users' },
+  { id: 'follows', label: 'Abonnements', icon: 'user-check' },
   { id: 'invitations', label: 'Invitations', icon: 'user-plus' },
   { id: 'find', label: 'Trouver des amis', icon: 'search' },
   { id: 'blocked', label: 'Bloqués', icon: 'lock' },
@@ -44,6 +45,10 @@ export class FriendsPageComponent implements OnInit {
 
   readonly feed = signal<FeedItem[] | null>(null);
   readonly friendCount = signal(0);
+  readonly followingCount = signal(0);
+  /** Artistes que je suis et personnes qui me suivent. */
+  readonly follows = signal<{ following: FollowLink[]; followers: FollowLink[] } | null>(null);
+  readonly followsError = signal('');
   readonly feedError = signal('');
 
   readonly links = signal<FriendsResponse | null>(null);
@@ -73,6 +78,7 @@ export class FriendsPageComponent implements OnInit {
       if (tab === 'feed') this.loadFeed();
       if (tab === 'friends' || tab === 'invitations') this.loadLinks();
       if (tab === 'blocked') this.loadBlocked();
+      if (tab === 'follows') this.loadFollows();
     });
     this.search$
       .pipe(
@@ -107,9 +113,10 @@ export class FriendsPageComponent implements OnInit {
   loadFeed(): void {
     this.feedError.set('');
     this.social.feed().subscribe({
-      next: ({ items, friendCount }) => {
+      next: ({ items, friendCount, followingCount }) => {
         this.feed.set(items);
         this.friendCount.set(friendCount);
+        this.followingCount.set(followingCount ?? 0);
       },
       error: (error: unknown) => this.feedError.set(httpMessage(error, 'Impossible de charger le fil d’activité.')),
     });
@@ -129,6 +136,18 @@ export class FriendsPageComponent implements OnInit {
       next: ({ blocked }) => this.blocked.set(blocked),
       error: (error: unknown) => this.blockedError.set(httpMessage(error, 'Impossible de charger la liste.')),
     });
+  }
+
+  loadFollows(): void {
+    this.followsError.set('');
+    this.social.follows().subscribe({
+      next: (follows) => this.follows.set(follows),
+      error: (error: unknown) => this.followsError.set(httpMessage(error, 'Impossible de charger vos abonnements.')),
+    });
+  }
+
+  unfollow(user: UserSummary): void {
+    this.run(user.id, this.social.unfollow(user.id), `Vous ne suivez plus ${user.name}.`, () => this.loadFollows());
   }
 
   playFeed(index: number): void {

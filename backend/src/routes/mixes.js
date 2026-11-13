@@ -18,7 +18,8 @@ import { MixProject } from "../models/MixProject.js";
 import { RemixRequest } from "../models/RemixRequest.js";
 import { Track } from "../models/Track.js";
 import { User } from "../models/User.js";
-import { isBlockedBetween, notify } from "../social.js";
+import { isBlockedBetween, notify, notifyFollowers } from "../social.js";
+import { parseWaveform } from "../waveform.js";
 
 const oid = (value) => new mongoose.Types.ObjectId(String(value));
 const validId = (value) => mongoose.isValidObjectId(value) && String(value).length === 24;
@@ -286,6 +287,8 @@ export function registerMixRoutes(app, { auth, upload, cleanupUploadedFiles, max
         const visibility = req.body?.visibility || "private";
         if (!VISIBILITIES.includes(visibility)) return fail(400, { message: `Visibilité inconnue : ${VISIBILITIES.join(", ")}` });
         const duration = Number(req.body?.durationSeconds);
+        const waveform = parseWaveform(req.body?.waveform);
+        if (waveform.error) return fail(400, { message: waveform.error });
         const style = req.body?.style || "electro";
         if (!STYLES.includes(style)) return fail(400, { message: `Style inconnu. Styles possibles : ${STYLES.join(", ")}` });
 
@@ -318,12 +321,14 @@ export function registerMixRoutes(app, { auth, upload, cleanupUploadedFiles, max
           durationSeconds: Number.isFinite(duration) && duration > 0 && duration <= 86400 ? Math.round(duration * 10) / 10 : null,
           credits,
           mixProjectId: project._id,
+          ...(waveform.value && { waveform: waveform.value }),
           ...(coverFile && { coverStoredName: coverFile.filename, coverMimeType: coverFile.mimetype }),
         });
         project.status = "published";
         project.publishedAt = new Date();
         project.publishedTrackIds.push(track._id);
         await project.save();
+        await notifyFollowers(track.ownerId, track);
         console.log(`[mixes] Projet ${project.id} publié : piste ${track.id} (${visibility}, ${credits.sources.length} source(s))`);
         res.status(201).json(track.toPublic());
       } catch (error) {

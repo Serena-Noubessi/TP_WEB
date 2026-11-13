@@ -35,6 +35,7 @@ Ce fichier trace **chaque demande** faite à l'assistant IA (Claude Code), **dan
 | 21 | 14/10/2026 | « l'onglet des piste depasse l'onglet qui permet d'importer les musiques essaie d'ajuster ça » | Corrigé : colonne d'import à largeur garantie, champs adaptés, empilement sous 1100 px ; vérifié de 1440 à 400 px | Non (mise en page) |
 | 22 | 15-16/10/2026 | « oui » : continuer la mission MOST VIBE avec les sections 11, 12 et 13 | Étape 5 faite : finitions vérifiées page par page, recette A/B/C rangée dans le projet (197 réussis, 0 échoué(s)), livrables et mise en ligne documentés (non mise en ligne) ; aucun commit | Oui (mission MOST VIBE) |
 | 23 | 16/10/2026 | « c'est quoi le probleme rencontré? » | Réponse : aucun défaut de l'application ; blocages des outils de test (lanceur, port de l'API de démo, API de démo restée allumée depuis la veille), corrigés ; recette finale 197/197 | Non (question) |
+| 24 | 02/11/2026 | « ajoute une forme d'onde sur chaque piste une petite image du son sur les cartes et dans le lecteur » | Fait : forme d'onde calculée par le navigateur, enregistrée en base, affichée sur les cartes, dans la bibliothèque, sur la page de la piste et dans le lecteur (clic pour se déplacer) ; migration 005 ; tests verts | Oui (backend et frontend) |
 
 ---
 
@@ -1435,5 +1436,48 @@ La plupart des pages étaient déjà correctes. L'audit a trouvé les défauts s
 **Résultat après corrections :** recette complète **197 réussis, 0 échoué**. Tests du serveur : 34/34. Tests de l'interface : 50/50.
 
 **Fichiers modifiés :** `backend/scripts/demo-start.mjs`, `tests-navigateur/lib.mjs`, `tests-navigateur/run-all.mjs`, `tests-navigateur/etape5-finitions.mjs`.
+
+**État :** terminé.
+
+## Demande 24 — Forme d'onde sur chaque piste (02/11/2026)
+
+> « ajoute une forme d'onde sur chaque piste une petite image du son sur les cartes et dans le lecteur »
+
+**Contexte :** le rapport avait été figé le 16/10/2026 à la demande de l'étudiante. Elle l'a rouvert le 02/11/2026 pour cette demande.
+
+**Interprétation :** afficher une petite image du son (une forme d'onde) :
+- sur chaque carte de piste ;
+- dans le lecteur du bas.
+
+**Choix technique :** le **navigateur** calcule la forme d'onde, car il sait décoder le son (Web Audio, `decodeAudioData`), ce que le serveur ne fait pas.
+- **Calcul :** le morceau est découpé en 64 tranches. On garde le niveau le plus fort de chaque tranche, ramené entre 4 et 100. La plus forte barre vaut 100, et aucune barre ne disparaît.
+- **Enregistrement :** le calcul est fait une seule fois, puis enregistré en base dans le champ `waveform` de la piste. Les autres visiteurs n'ont donc rien à recalculer.
+
+**Ce qui a été fait :**
+- **Serveur :**
+  - champ `waveform` (16 à 200 entiers de 0 à 100), accepté à l'envoi d'une piste, à la publication d'un mix et par `PATCH /tracks/:id`, qui reste réservé au propriétaire ;
+  - format vérifié, avec une erreur `400` si les valeurs sont invalides ;
+  - migration réversible 005, appliquée après une sauvegarde de la base.
+- **Site :**
+  - **Calcul :** `shared/audio/waveform.ts` ;
+  - **Affichage :** composant `<app-waveform>`, des barres SVG dont la partie déjà écoutée est colorée ;
+  - **Envoi :** la forme d'onde est calculée pour l'import simple, l'import groupé et la publication d'un mix ;
+  - **Pistes déjà en ligne :** quand leur propriétaire ouvre « Ma bibliothèque » ou « Backing tracks », le navigateur calcule les formes d'onde manquantes une par une et les enregistre (`WaveformService`) ;
+  - **Lieux d'affichage :**
+    - petite image du son sur chaque carte ;
+    - dans les lignes de « Mes fichiers » ;
+    - en grand sur la page de la piste ;
+    - **dans le lecteur du bas**, à la place de la barre de position : on clique sur la forme d'onde pour aller à un passage, et le curseur reste utilisable au clavier.
+
+**Tests :**
+- tests unitaires du site, dont le calcul des barres et le composant (partie écoutée, clic pour se déplacer) : **61/61** ;
+- tests du serveur, dont le format `waveform` et la migration 005 : 0 échec ;
+- `ng build` réussi ;
+- test navigateur, Chrome muet :
+  - formes d'onde calculées et enregistrées pour les 5 pistes d'Alice ;
+  - affichées sur les cartes et dans le lecteur ;
+  - partie écoutée colorée ;
+  - déplacement à 75 % ;
+- suite navigateur complète : **234/234**.
 
 **État :** terminé.

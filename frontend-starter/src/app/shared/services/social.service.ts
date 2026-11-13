@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Track } from '../models/track.model';
-import { UserSummary } from './library.service';
+import { Playlist, UserSummary } from './library.service';
 
 export type Relation = 'self' | 'friend' | 'outgoing' | 'incoming' | 'none';
 
@@ -29,6 +29,22 @@ export interface PublicProfile extends UserSummary {
   requestId: string | null;
   friendCount: number;
   tracks: Track[];
+  /** Abonnés (personnes qui suivent ce membre) et abonnements. */
+  followers?: number;
+  following?: number;
+  isFollowing?: boolean;
+  /** Playlists visibles par moi : publiques, ou partagées avec moi. */
+  playlists?: Playlist[];
+}
+
+export interface FollowState {
+  following: boolean;
+  followers: number;
+}
+
+export interface FollowLink {
+  user: UserSummary;
+  since: string;
 }
 
 export interface FeedItem {
@@ -40,11 +56,24 @@ export interface FeedItem {
 
 export interface AppNotification {
   id: string;
-  type: 'friend_request' | 'friend_accepted' | 'message' | 'track_shared' | 'remix_request' | 'remix_accepted' | 'remix_refused' | 'content_removed';
+  type:
+    | 'friend_request'
+    | 'friend_accepted'
+    | 'message'
+    | 'track_shared'
+    | 'remix_request'
+    | 'remix_accepted'
+    | 'remix_refused'
+    | 'content_removed'
+    | 'comment'
+    | 'follow'
+    | 'new_release'
+    | 'playlist_shared';
   actor: UserSummary;
   count: number;
   conversationId: string | null;
   track: { id: string; title: string | null } | null;
+  playlist?: { id: string; name: string } | null;
   read: boolean;
   at: string;
 }
@@ -137,7 +166,19 @@ export class SocialService {
   }
 
   feed() {
-    return this.http.get<{ items: FeedItem[]; friendCount: number }>('/api/feed');
+    return this.http.get<{ items: FeedItem[]; friendCount: number; followingCount?: number }>('/api/feed');
+  }
+
+  follow(userId: string) {
+    return this.http.post<FollowState>(`/api/users/${userId}/follow`, {});
+  }
+
+  unfollow(userId: string) {
+    return this.http.delete<FollowState>(`/api/users/${userId}/follow`);
+  }
+
+  follows() {
+    return this.http.get<{ following: FollowLink[]; followers: FollowLink[] }>('/api/me/follows');
   }
 
   notifications() {

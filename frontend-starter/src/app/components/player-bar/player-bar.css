@@ -104,6 +104,12 @@
   accent-color: var(--mv-primary);
 }
 
+.range.has-wave { position: relative; height: 1.9rem; }
+.range.has-wave .wave { position: absolute; inset: 0; --wave-height: 100%; pointer-events: none; }
+/* Le curseur reste utilisable (clic, glisser, clavier) mais seule la forme d'onde se voit. */
+.range.has-wave input { position: absolute; inset: 0; height: 100%; opacity: 0; cursor: pointer; }
+.range.has-wave:focus-within .wave { outline: 2px solid var(--mv-primary); outline-offset: 2px; border-radius: 4px; }
+
 .reactions { grid-column: 3; }
 .volume { grid-column: 4; }
 

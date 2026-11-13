@@ -26,6 +26,7 @@ export class TrackService {
       if (value) body.append(key, value);
     }
     if (meta.durationSeconds) body.append('durationSeconds', String(meta.durationSeconds));
+    if (meta.waveform?.length) body.append('waveform', meta.waveform.join(','));
     return this.http.post<Track>('/api/tracks', body, {
       observe: 'events',
       reportProgress: true,

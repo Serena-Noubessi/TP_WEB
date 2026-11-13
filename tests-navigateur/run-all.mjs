@@ -29,6 +29,7 @@ const STEPS = [
   // Le rôle admin ne s'obtient jamais par l'API : on le donne à C avec la commande officielle (base de démonstration).
   { n: 4, file: 'etape4-mix-admin.mjs', title: 'Sections 8 à 10 : mixages et remixes, paramètres, administration', admin: 'chloe@mostvibe.test' },
   { n: 5, file: 'etape5-finitions.mjs', title: 'Section 11 : états vides, erreurs, session expirée, messages de connexion' },
+  { n: 6, file: 'etape6-ajouts.mjs', title: 'Ajouts : forme d’onde, téléchargement, commentaires, abonnements, playlists partagées' },
 ];
 
 const args = process.argv.slice(2);

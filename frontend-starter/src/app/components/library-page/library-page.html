@@ -56,14 +56,16 @@
                   </app-cover-image>
                 </span>
                 <span class="info">
-                  <strong>{{ displayTitle(track) }}</strong>
+                  <strong><a class="title-link" [routerLink]="['/t', track.id]">{{ displayTitle(track) }}</a></strong>
                   <small>{{ category.label }}@if (track.album) { · {{ track.album }} } · ajoutée le {{ date(track.createdAt) }}</small>
+                  <app-waveform class="row-wave" [peaks]="waveforms.of(track)" [progress]="isCurrent(track) && player.duration() ? player.time() / player.duration() : null" />
                 </span>
                 <span class="badge" [class]="'badge vis-' + (track.visibility ?? 'private')"><app-icon [name]="vis.icon" /> {{ vis.label }}</span>
                 <span class="actions">
                   <button type="button" class="icon-btn" (click)="playFile(files(), i)" [attr.aria-label]="(isCurrent(track) && player.playing() ? 'Pause : ' : 'Écouter : ') + displayTitle(track)">
                     <app-icon [name]="isCurrent(track) && player.playing() ? 'pause' : 'play'" />
                   </button>
+                  <button type="button" class="icon-btn" (click)="download(track)" [attr.aria-label]="'Télécharger ' + displayTitle(track)" title="Télécharger"><app-icon name="download" /></button>
                   <button type="button" class="btn small ghost" (click)="sharing.set(track)"><app-icon name="share" /> Visibilité et partage</button>
                 </span>
               </li>
@@ -135,6 +137,7 @@
           <label class="sr-only" for="new-playlist-visibility">Visibilité</label>
           <select id="new-playlist-visibility" #newVisibility>
             <option value="private">Privée</option>
+            <option value="friends">Amis choisis</option>
             <option value="public">Publique</option>
           </select>
           <button type="submit" class="btn primary"><app-icon name="plus" /> Créer</button>
@@ -156,15 +159,16 @@
               <li class="row" [class.is-open]="openPlaylist()?.id === playlist.id">
                 <span class="thumb playlist-thumb"><app-icon name="list-music" size="1.3rem" /></span>
                 <span class="info">
-                  <strong>{{ playlist.name }}</strong>
+                  <strong><a class="title-link" [routerLink]="['/p', playlist.id]">{{ playlist.name }}</a></strong>
                   <small>{{ playlist.trackCount }} piste(s) · modifiée le {{ date(playlist.updatedAt) }}</small>
                 </span>
-                <button type="button" class="badge" [class]="'badge vis-' + playlist.visibility" (click)="togglePlaylistVisibility(playlist)"
-                  [title]="'Rendre ' + (playlist.visibility === 'public' ? 'privée' : 'publique')">
-                  <app-icon [name]="playlist.visibility === 'public' ? 'globe' : 'lock'" /> {{ playlist.visibility === 'public' ? 'Publique' : 'Privée' }}
-                </button>
+                @let pvis = visibilityLabels[playlist.visibility];
+                <span class="badge" [class]="'badge vis-' + playlist.visibility">
+                  <app-icon [name]="pvis.icon" /> {{ playlist.visibility === 'private' ? 'Privée' : playlist.visibility === 'public' ? 'Publique' : 'Amis choisis (' + (playlist.sharedCount ?? 0) + ')' }}
+                </span>
                 <span class="actions">
                   <button type="button" class="btn small ghost" (click)="showPlaylist(playlist)">Ouvrir</button>
+                  <button type="button" class="btn small ghost" (click)="sharingPlaylist.set(playlist)"><app-icon name="share" /> Partager</button>
                   @if (confirmDeletePlaylist() === playlist.id) {
                     <button type="button" class="btn small danger" (click)="deletePlaylist(playlist)">Confirmer</button>
                     <button type="button" class="btn small ghost" (click)="confirmDeletePlaylist.set('')">Annuler</button>
@@ -175,6 +179,9 @@
               </li>
             }
           </ul>
+          @if (sharingPlaylist(); as target) {
+            <app-playlist-share-dialog [playlist]="target" (changed)="playlistChanged($event)" (closed)="sharingPlaylist.set(null)" />
+          }
           @if (openPlaylist(); as detail) {
             <section class="detail" aria-live="polite">
               <h3>{{ detail.name }}</h3>
@@ -247,6 +254,26 @@
               </div>
             }
           </div>
+        }
+
+        <h3 class="sub-title">Playlists partagées avec moi</h3>
+        @if (sharedPlaylists() === null) {
+          <p class="state" role="status">Chargement…</p>
+        } @else if (!sharedPlaylists()!.length) {
+          <p class="state">Aucun ami n’a encore partagé de playlist avec vous.</p>
+        } @else {
+          <ul class="rows">
+            @for (playlist of sharedPlaylists(); track playlist.id) {
+              <li class="row">
+                <span class="thumb playlist-thumb"><app-icon name="list-music" size="1.3rem" /></span>
+                <span class="info">
+                  <strong><a class="title-link" [routerLink]="['/p', playlist.id]">{{ playlist.name }}</a></strong>
+                  <small>{{ playlist.trackCount }} piste(s) · de {{ playlist.owner.name }}</small>
+                </span>
+                <span class="actions"><a class="btn small ghost" [routerLink]="['/p', playlist.id]">Ouvrir</a></span>
+              </li>
+            }
+          </ul>
         }
       </section>
     }

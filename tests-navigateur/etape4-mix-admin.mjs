@@ -106,7 +106,7 @@ check('confidentialité enregistrée', /Recherche : enregistré/.test((await tex
 const hidden = (await (await api('/users/search?q=bob', C.token)).json()).users.length;
 check('Bob n’apparaît plus dans la recherche de Chloé', hidden === 0);
 await click(`[...document.querySelectorAll('.switch-row')].find(r => r.textContent.includes('Apparaître dans la recherche')).querySelector('input')`); await sleep(1200);
-check('5 réglages de notification', (await ev(`[...document.querySelectorAll('.panel')].find(p => p.textContent.includes('Notifications')).querySelectorAll('input[role=switch]').length`)) === 5);
+check('7 réglages de notification (dont commentaires et abonnements)', (await ev(`[...document.querySelectorAll('.panel')].find(p => p.textContent.includes('Notifications')).querySelectorAll('input[role=switch]').length`)) === 7);
 check('conséquences de la suppression expliquées', (await ev(`document.querySelectorAll('.consequences li').length`)) === 6);
 check('bouton de suppression bloqué sans confirmation', await ev(`document.querySelector('.danger-zone .btn.danger').disabled`));
 await shot('mv4-parametres');

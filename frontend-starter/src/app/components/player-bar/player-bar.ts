@@ -6,6 +6,8 @@ import { categoryOf, displayTitle } from '../../shared/models/category.model';
 import { AudioPlayerService } from '../../shared/services/audio-player.service';
 import { IconComponent } from '../icon/icon';
 import { ReactionButtonsComponent } from '../reaction-buttons/reaction-buttons';
+import { WaveformComponent } from '../waveform/waveform';
+import { WaveformService } from '../../shared/services/waveform.service';
 
 /**
  * Lecteur audio persistant de MOST VIBE, en bas de l'écran sur toutes les pages.
@@ -14,12 +16,13 @@ import { ReactionButtonsComponent } from '../reaction-buttons/reaction-buttons';
  */
 @Component({
   selector: 'app-player-bar',
-  imports: [RouterLink, IconComponent, ReactionButtonsComponent],
+  imports: [RouterLink, IconComponent, ReactionButtonsComponent, WaveformComponent],
   templateUrl: './player-bar.html',
   styleUrl: './player-bar.css',
 })
 export class PlayerBarComponent {
   readonly player = inject(AudioPlayerService);
+  private readonly waveforms = inject(WaveformService);
   readonly displayTitle = displayTitle;
   readonly categoryOf = categoryOf;
   private readonly url = toSignal(
@@ -31,6 +34,11 @@ export class PlayerBarComponent {
   );
 
   readonly track = computed(() => (this.url().startsWith('/audio') ? null : this.player.current()));
+  /** Forme d'onde du morceau en cours (le curseur reste au-dessus, invisible, pour le clavier). */
+  readonly peaks = computed(() => {
+    const current = this.track();
+    return current && !current.online ? this.waveforms.of(current) : null;
+  });
   readonly progress = computed(() => (this.player.duration() ? (this.player.time() / this.player.duration()) * 100 : 0));
 
   seek(event: Event): void {

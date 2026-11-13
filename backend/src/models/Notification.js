@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-export const NOTIFICATION_TYPES = ["friend_request", "friend_accepted", "message", "track_shared", "remix_request", "remix_accepted", "remix_refused", "content_removed"];
+export const NOTIFICATION_TYPES = ["friend_request", "friend_accepted", "message", "track_shared", "remix_request", "remix_accepted", "remix_refused", "content_removed", "comment", "follow", "new_release", "playlist_shared"];
 
 /**
  * Notification destinée à userId, provoquée par actorId.
@@ -16,6 +16,7 @@ const schema = new mongoose.Schema(
     trackId: { type: mongoose.Schema.Types.ObjectId, ref: "Track", default: null },
     /** Titre gardé pour les notifications sur une piste supprimée (modération). */
     trackTitle: { type: String, default: null },
+    playlistId: { type: mongoose.Schema.Types.ObjectId, ref: "Playlist", default: null },
     count: { type: Number, default: 1, min: 1 },
     readAt: { type: Date, default: null },
   },

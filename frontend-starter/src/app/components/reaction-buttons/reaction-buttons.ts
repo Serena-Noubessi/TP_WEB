@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { displayTitle } from '../../shared/models/category.model';
 import { Track } from '../../shared/models/track.model';
 import { AuthService } from '../../shared/services/auth.service';
+import { DownloadService, downloadErrorMessage } from '../../shared/services/download.service';
 import { httpMessage, LibraryService, Playlist, ReactionType } from '../../shared/services/library.service';
 import { PendingActionService } from '../../shared/services/pending-action.service';
 import { ReactionsService } from '../../shared/services/reactions.service';
@@ -62,7 +63,7 @@ import { ReportDialogComponent } from '../report-dialog/report-dialog';
           }
         </span>
       }
-      @if (othersTrack()) {
+      @if (!track().online) {
         <span class="menu-anchor">
           <button type="button" class="react" (click)="moreOpen.set(!moreOpen()); menuOpen.set(false)" [attr.aria-expanded]="moreOpen()" aria-haspopup="true"
             [attr.aria-label]="'Plus d’actions pour ' + title()" title="Plus d’actions">
@@ -70,8 +71,14 @@ import { ReportDialogComponent } from '../report-dialog/report-dialog';
           </button>
           @if (moreOpen()) {
             <div class="menu" role="menu" aria-label="Plus d’actions">
-              <button type="button" role="menuitem" class="menu-item" (click)="moreOpen.set(false); remixing.set(true)"><app-icon name="shuffle" /> <span>Remixer</span></button>
-              <button type="button" role="menuitem" class="menu-item" (click)="moreOpen.set(false); reporting.set(true)"><app-icon name="flag" /> <span>Signaler</span></button>
+              <button type="button" role="menuitem" class="menu-item" (click)="downloadTrack()" [disabled]="downloading()">
+                <app-icon name="download" /> <span>{{ downloading() ? 'Téléchargement…' : 'Télécharger' }}</span>
+              </button>
+              <button type="button" role="menuitem" class="menu-item" (click)="openPage()"><app-icon name="message" /> <span>Commentaires</span></button>
+              @if (othersTrack()) {
+                <button type="button" role="menuitem" class="menu-item" (click)="moreOpen.set(false); remixing.set(true)"><app-icon name="shuffle" /> <span>Remixer</span></button>
+                <button type="button" role="menuitem" class="menu-item" (click)="moreOpen.set(false); reporting.set(true)"><app-icon name="flag" /> <span>Signaler</span></button>
+              }
             </div>
           }
         </span>
@@ -143,6 +150,7 @@ export class ReactionButtonsComponent {
   private readonly library = inject(LibraryService);
   private readonly router = inject(Router);
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly downloads = inject(DownloadService);
 
   readonly track = input.required<Track & { likeCount?: number }>();
   /** Version réduite (lecteur, listes) : sans le compteur. */
@@ -153,10 +161,11 @@ export class ReactionButtonsComponent {
   readonly likeCount = computed(() => this.reactions.likeCounts().get(this.track().id) ?? this.track().likeCount ?? 0);
 
   readonly menuOpen = signal(false);
-  /** Menu « ⋯ » (Remixer, Signaler) : seulement pour la piste d'un autre membre, une fois connecté. */
+  /** Menu « ⋯ » : Télécharger et Commentaires pour toute piste qu'on peut écouter ; Remixer et Signaler pour celle d'un autre membre. */
   readonly moreOpen = signal(false);
   readonly remixing = signal(false);
   readonly reporting = signal(false);
+  readonly downloading = signal(false);
   readonly othersTrack = computed(() => {
     const me = this.auth.userId();
     const owner = this.track().author?.id ?? this.track().ownerId;
@@ -226,6 +235,24 @@ export class ReactionButtonsComponent {
       },
       error: (error: unknown) => this.menuMessage.set(httpMessage(error, 'Création impossible.')),
     });
+  }
+
+  /** Le serveur vérifie les droits : seule une piste qu'on a le droit d'écouter se télécharge. */
+  async downloadTrack(): Promise<void> {
+    this.downloading.set(true);
+    try {
+      await this.downloads.download(this.track());
+      this.moreOpen.set(false);
+    } catch (error) {
+      this.reactions.flash.set(downloadErrorMessage(error));
+    } finally {
+      this.downloading.set(false);
+    }
+  }
+
+  openPage(): void {
+    this.moreOpen.set(false);
+    void this.router.navigate(['/t', this.track().id], { fragment: 'comments' });
   }
 
   closeOnOutside(event: MouseEvent): void {

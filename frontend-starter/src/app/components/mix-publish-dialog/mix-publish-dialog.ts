@@ -1,3 +1,4 @@
+import { computeWaveform } from '../../shared/audio/waveform';
 import { Component, computed, ElementRef, inject, input, OnInit, output, signal, viewChild } from '@angular/core';
 import { HttpEventType } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
@@ -214,7 +215,7 @@ export class MixPublishDialogComponent implements OnInit {
     this.cover = (event.target as HTMLInputElement).files?.[0];
   }
 
-  publish(): void {
+  async publish(): Promise<void> {
     const recording = this.engine.recordingBlob();
     if (!recording) {
       this.error.set('Aucun enregistrement : utilisez « Enregistrer le mix » dans le studio.');
@@ -226,8 +227,10 @@ export class MixPublishDialogComponent implements OnInit {
     }
     this.busy.set(true);
     this.error.set('');
+    // Forme d'onde de l'enregistrement, calculée avant l'envoi (facultative).
+    const wave = await computeWaveform(recording);
     this.mixes
-      .publish(this.projectId(), recording, { title: this.publishTitle().trim(), visibility: this.visibility(), style: this.style(), durationSeconds: this.seconds(), cover: this.cover })
+      .publish(this.projectId(), recording, { title: this.publishTitle().trim(), visibility: this.visibility(), style: this.style(), durationSeconds: this.seconds(), waveform: wave?.peaks, cover: this.cover })
       .subscribe({
         next: (event) => {
           if (event.type === HttpEventType.UploadProgress) this.progress.set(event.total ? Math.round((event.loaded / event.total) * 100) : null);

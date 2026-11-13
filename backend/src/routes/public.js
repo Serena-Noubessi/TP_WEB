@@ -19,6 +19,7 @@ export const AUTHOR_LOOKUP = [
   { $lookup: { from: "users", localField: "ownerId", foreignField: "_id", as: "author", pipeline: [{ $project: { name: 1 } }] } },
   { $set: { author: { $first: "$author" } } },
   { $lookup: { from: "reactions", localField: "_id", foreignField: "trackId", as: "likes", pipeline: [{ $match: { type: "like" } }, { $count: "n" }] } },
+  { $lookup: { from: "comments", localField: "_id", foreignField: "trackId", as: "comments", pipeline: [{ $count: "n" }] } },
 ];
 export const PUBLIC_FIELDS = {
   $project: {
@@ -35,6 +36,8 @@ export const PUBLIC_FIELDS = {
     likeCount: { $ifNull: [{ $first: "$likes.n" }, 0] },
     durationSeconds: { $ifNull: ["$durationSeconds", null] },
     credits: { $ifNull: ["$credits", null] },
+    waveform: { $ifNull: ["$waveform", null] },
+    commentCount: { $ifNull: [{ $first: "$comments.n" }, 0] },
     author: { id: { $toString: "$author._id" }, name: "$author.name" },
     coverUrl: { $cond: [{ $ifNull: ["$coverStoredName", false] }, { $concat: ["/api/tracks/", { $toString: "$_id" }, "/cover"] }, null] },
   },

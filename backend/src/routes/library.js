@@ -9,7 +9,7 @@
  * Toutes les décisions d'accès sont prises ici, par le serveur, à chaque requête.
  */
 import mongoose from "mongoose";
-import { canRead, readableMatch } from "../access.js";
+import { canRead, PUBLIC_MATCH, readableMatch } from "../access.js";
 import { STYLES } from "../constants.js";
 import { ExternalTrack } from "../models/ExternalTrack.js";
 import { Playlist } from "../models/Playlist.js";
@@ -18,7 +18,7 @@ import { Track } from "../models/Track.js";
 import { TrackAccess } from "../models/TrackAccess.js";
 import { User } from "../models/User.js";
 import { AUTHOR_LOOKUP, PUBLIC_FIELDS } from "./public.js";
-import { friendIds, notify } from "../social.js";
+import { friendIds, hiddenIds, notify } from "../social.js";
 
 /** Message affiché au propriétaire chaque fois qu'il retire un accès (section 5). */
 export const REVOKE_NOTICE =
@@ -116,7 +116,7 @@ function externalFields(body) {
   return { fields, errors };
 }
 
-export function registerLibraryRoutes(app, { auth }) {
+export function registerLibraryRoutes(app, { auth, optionalAuth }) {
   /* ------------------------------------------------------------------ */
   /* Réactions : j'aime et favoris                                       */
   /* ------------------------------------------------------------------ */
@@ -325,7 +325,7 @@ export function registerLibraryRoutes(app, { auth }) {
       else fields.description = description;
     }
     if (body?.visibility !== undefined) {
-      if (!["private", "public"].includes(body.visibility)) errors.push("Visibilité d'une playlist : private ou public");
+      if (!["private", "friends", "public"].includes(body.visibility)) errors.push("Visibilité d'une playlist : private, friends ou public");
       else fields.visibility = body.visibility;
     }
     return { fields, errors };
@@ -365,17 +365,33 @@ export function registerLibraryRoutes(app, { auth }) {
   });
 
   /**
-   * Détail d'une playlist : la mienne, ou une playlist publique d'un autre.
-   * Seules les pistes que le LECTEUR a le droit d'écouter sont renvoyées.
+   * Détail d'une playlist : la mienne, une playlist publique (même sans compte),
+   * ou une playlist « Amis choisis » partagée avec moi. Seules les pistes que le
+   * LECTEUR a le droit d'écouter sont renvoyées : une playlist ne rend jamais
+   * visible une piste privée.
    */
-  app.get("/api/playlists/:id", auth, async (req, res, next) => {
+  app.get("/api/playlists/:id", optionalAuth, async (req, res, next) => {
     try {
       if (!validId(req.params.id)) return notFound(res, "Playlist inconnue");
       const playlist = await Playlist.findById(req.params.id);
-      const mine = playlist && String(playlist.ownerId) === String(req.auth.sub);
-      if (!playlist || (!mine && playlist.visibility !== "public")) return notFound(res, "Playlist inconnue");
-      const tracks = await publicTracks(playlist.trackIds, await readableMatch(req.auth.sub));
-      res.json({ ...playlist.toPublic(), tracks, hiddenCount: playlist.trackIds.length - tracks.length });
+      const me = req.auth?.sub;
+      const mine = playlist && me && String(playlist.ownerId) === String(me);
+      const sharedWithMe = playlist && me && playlist.visibility === "friends" && playlist.sharedWith.some((id) => String(id) === String(me));
+      if (!playlist || (!mine && playlist.visibility !== "public" && !sharedWithMe)) return notFound(res, "Playlist inconnue");
+      if (!mine && me && (await hiddenIds(me)).includes(String(playlist.ownerId))) return notFound(res, "Playlist inconnue");
+      const tracks = await publicTracks(playlist.trackIds, me ? await readableMatch(me) : PUBLIC_MATCH);
+      const owner = await User.findById(playlist.ownerId).select("name").lean();
+      const sharedWith = mine
+        ? (await User.find({ _id: { $in: playlist.sharedWith } }).select("name").lean()).map((user) => ({ id: String(user._id), name: user.name }))
+        : undefined;
+      res.json({
+        ...playlist.toPublic(),
+        owner: { id: String(playlist.ownerId), name: owner?.name ?? "Compte supprimé" },
+        mine: Boolean(mine),
+        ...(sharedWith && { sharedWith }),
+        tracks,
+        hiddenCount: playlist.trackIds.length - tracks.length,
+      });
     } catch (error) {
       console.error("[playlists] Erreur de lecture d'une playlist", error);
       next(error);
@@ -391,10 +407,71 @@ export function registerLibraryRoutes(app, { auth }) {
       const playlist = await ownedPlaylist(req, res);
       if (!playlist) return;
       Object.assign(playlist, fields);
+      // Repasser en « Privée » retire l'accès des amis choisis.
+      if (fields.visibility === "private") playlist.sharedWith = [];
       await playlist.save();
       res.json(playlist.toPublic());
     } catch (error) {
       console.error("[playlists] Erreur de modification", error);
+      next(error);
+    }
+  });
+
+  /**
+   * Partage une playlist avec des amis choisis : { userIds }. Une playlist privée
+   * passe en « Amis choisis ». Chaque nouvelle personne reçoit une notification.
+   */
+  app.post("/api/playlists/:id/share", auth, async (req, res, next) => {
+    try {
+      const playlist = await ownedPlaylist(req, res);
+      if (!playlist) return;
+      const raw = Array.isArray(req.body?.userIds) ? req.body.userIds : [];
+      const userIds = [...new Set(raw.map(String))];
+      if (!userIds.length || userIds.length > 50 || !userIds.every(validId)) return res.status(400).json({ message: "userIds doit contenir entre 1 et 50 identifiants valides" });
+      const friends = new Set(await friendIds(req.auth.sub));
+      if (!userIds.every((userId) => friends.has(userId))) return res.status(403).json({ message: "Vous ne pouvez partager une playlist qu'avec vos amis" });
+      const already = new Set(playlist.sharedWith.map(String));
+      const added = userIds.filter((userId) => !already.has(userId));
+      playlist.sharedWith.push(...added.map(oid));
+      if (playlist.visibility === "private") playlist.visibility = "friends";
+      await playlist.save();
+      for (const userId of added) await notify({ userId, type: "playlist_shared", actorId: req.auth.sub, playlistId: playlist._id });
+      console.log(`[playlists] Playlist ${playlist.id} partagée avec ${added.length} ami(s)`);
+      const users = await User.find({ _id: { $in: playlist.sharedWith } }).select("name").lean();
+      res.status(201).json({ ...playlist.toPublic(), sharedWith: users.map((user) => ({ id: String(user._id), name: user.name })) });
+    } catch (error) {
+      console.error("[playlists] Erreur de partage", error);
+      next(error);
+    }
+  });
+
+  /** Retire l'accès d'un ami à ma playlist (effet immédiat). */
+  app.delete("/api/playlists/:id/share/:userId", auth, async (req, res, next) => {
+    try {
+      const playlist = await ownedPlaylist(req, res);
+      if (!playlist) return;
+      const before = playlist.sharedWith.length;
+      playlist.sharedWith = playlist.sharedWith.filter((id) => String(id) !== String(req.params.userId));
+      if (playlist.sharedWith.length === before) return notFound(res, "Cette personne n'a pas accès à la playlist");
+      await playlist.save();
+      const users = await User.find({ _id: { $in: playlist.sharedWith } }).select("name").lean();
+      res.json({ ...playlist.toPublic(), sharedWith: users.map((user) => ({ id: String(user._id), name: user.name })) });
+    } catch (error) {
+      console.error("[playlists] Erreur de retrait de partage", error);
+      next(error);
+    }
+  });
+
+  /** Playlists que des amis ont partagées avec moi. */
+  app.get("/api/me/shared-playlists", auth, async (req, res, next) => {
+    try {
+      const hidden = await hiddenIds(req.auth.sub);
+      const playlists = await Playlist.find({ visibility: "friends", sharedWith: oid(req.auth.sub), ownerId: { $nin: hidden } }).sort({ updatedAt: -1 }).limit(100);
+      const owners = await User.find({ _id: { $in: playlists.map((playlist) => playlist.ownerId) } }).select("name").lean();
+      const names = new Map(owners.map((user) => [String(user._id), user.name]));
+      res.json({ playlists: playlists.map((playlist) => ({ ...playlist.toPublic(), owner: { id: String(playlist.ownerId), name: names.get(String(playlist.ownerId)) ?? "Compte supprimé" } })) });
+    } catch (error) {
+      console.error("[playlists] Erreur de lecture des partages reçus", error);
       next(error);
     }
   });

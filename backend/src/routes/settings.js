@@ -7,8 +7,10 @@
 import bcrypt from "bcryptjs";
 import { NOTIFICATION_PREFS, VISIBILITIES } from "../constants.js";
 import { Block } from "../models/Block.js";
+import { Comment } from "../models/Comment.js";
 import { Conversation } from "../models/Conversation.js";
 import { ExternalTrack } from "../models/ExternalTrack.js";
+import { Follow } from "../models/Follow.js";
 import { Friendship } from "../models/Friendship.js";
 import { Message } from "../models/Message.js";
 import { MixProject } from "../models/MixProject.js";
@@ -29,7 +31,7 @@ export const DELETE_CONFIRMATION = "SUPPRIMER";
 /** Conséquences de la suppression, affichées avant la confirmation (et renvoyées par l'API). */
 export const DELETE_CONSEQUENCES = [
   "Toutes vos pistes et leurs fichiers audio et pochettes sont définitivement effacés, y compris vos mixages publiés.",
-  "Vos playlists, favoris, « j'aime », projets de mixage et morceaux en ligne sont effacés.",
+  "Vos playlists, favoris, « j'aime », commentaires, abonnements, projets de mixage et morceaux en ligne sont effacés.",
   "Vos amitiés, invitations et blocages sont supprimés ; vos conversations et leurs messages sont effacés pour les deux participants.",
   "Les accès que vous aviez donnés à vos pistes disparaissent avec elles ; un fichier déjà téléchargé par quelqu'un ne peut pas être récupéré à distance.",
   "Les mixages publiés par d'autres avec votre autorisation restent en ligne ; votre nom y est remplacé par « Compte supprimé ».",
@@ -138,6 +140,9 @@ export function registerSettingsRoutes(app, { auth }) {
         MixProject.deleteMany({ ownerId: me }),
         ExternalTrack.deleteMany({ ownerId: me }),
         Report.deleteMany({ reporterId: me }),
+        Comment.deleteMany({ authorId: me }),
+        Follow.deleteMany({ $or: [{ followerId: me }, { followedId: me }] }),
+        Playlist.updateMany({ sharedWith: user._id }, { $pull: { sharedWith: user._id } }),
         // Crédits des mixages des autres : le nom est remplacé, l'attribution reste.
         Track.updateMany({ "credits.sources.ownerId": user._id }, { $set: { "credits.sources.$[source].ownerName": "Compte supprimé" } }, { arrayFilters: [{ "source.ownerId": user._id }] }),
       ]);

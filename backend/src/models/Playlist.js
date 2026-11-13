@@ -10,7 +10,9 @@ const schema = new mongoose.Schema(
     ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     name: { type: String, required: true, trim: true, minlength: 1, maxlength: 80 },
     description: { type: String, trim: true, maxlength: 300, default: "" },
-    visibility: { type: String, enum: ["private", "public"], default: "private" },
+    // Privée, Amis choisis (personnes de sharedWith, parmi ses amis) ou Publique.
+    visibility: { type: String, enum: ["private", "friends", "public"], default: "private" },
+    sharedWith: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], default: [] },
     trackIds: {
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Track" }],
       default: [],
@@ -28,6 +30,7 @@ schema.methods.toPublic = function () {
     description: this.description,
     visibility: this.visibility,
     trackCount: this.trackIds.length,
+    sharedCount: this.sharedWith?.length ?? 0,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   };

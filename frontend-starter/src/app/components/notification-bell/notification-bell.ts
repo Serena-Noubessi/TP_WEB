@@ -166,6 +166,16 @@ export class NotificationBellComponent {
         return `${who} refuse le remix de « ${item.track?.title ?? 'sa piste'} »`;
       case 'content_removed':
         return `L’administration a retiré « ${item.track?.title ?? 'une de vos pistes'} » de l’espace public`;
+      case 'comment':
+        return item.count > 1
+          ? `${who} a laissé ${item.count} commentaires sur « ${item.track?.title ?? 'votre piste'} »`
+          : `${who} a commenté « ${item.track?.title ?? 'votre piste'} »`;
+      case 'follow':
+        return `${who} s’est abonné(e) à vos créations`;
+      case 'new_release':
+        return `${who} a publié « ${item.track?.title ?? 'une nouvelle piste'} »`;
+      case 'playlist_shared':
+        return `${who} a partagé la playlist « ${item.playlist?.name ?? 'sans nom'} » avec vous`;
     }
   }
 
@@ -176,6 +186,10 @@ export class NotificationBellComponent {
     else if (item.type === 'message' && item.conversationId) void this.router.navigate(['/messages', item.conversationId]);
     else if (item.type.startsWith('remix_')) void this.router.navigate(['/library'], { queryParams: { tab: 'mixes' } });
     else if (item.type === 'content_removed') void this.router.navigate(['/library']);
+    else if (item.type === 'comment' && item.track) void this.router.navigate(['/t', item.track.id], { fragment: 'comments' });
+    else if (item.type === 'new_release' && item.track) void this.router.navigate(['/t', item.track.id]);
+    else if (item.type === 'follow') void this.router.navigate(['/u', item.actor.id]);
+    else if (item.type === 'playlist_shared' && item.playlist) void this.router.navigate(['/p', item.playlist.id]);
     else void this.router.navigate(['/library'], { queryParams: { tab: 'shared' } });
   }
 

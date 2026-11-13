@@ -130,7 +130,7 @@ check('… puis effacée du navigateur', (await ev(`localStorage.getItem('gpc_on
 await ev(`(() => { const s = document.querySelectorAll('.upload-card select')[1]; s.value = 'friends'; s.dispatchEvent(new Event('change')); })()`);
 await type('.upload-card label input:not([type])', 'Envoi amis test');
 const doc = await send('DOM.getDocument');
-const node = await send('DOM.querySelector', { nodeId: doc.result.root.nodeId, selector: '.upload-card input[type=file][accept="audio/*"]' });
+const node = await send('DOM.querySelector', { nodeId: doc.result.root.nodeId, selector: '.upload-card input[type=file][accept^="audio/*"]' });
 const resolved = await send('DOM.resolveNode', { nodeId: node.result.nodeId });
 await send('DOM.setFileInputFiles', { objectId: resolved.result.object.objectId, files: [UPLOAD_SAMPLE] });
 await sleep(500);

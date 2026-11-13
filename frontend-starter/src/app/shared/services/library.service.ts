@@ -46,16 +46,29 @@ export interface Playlist {
   ownerId: string;
   name: string;
   description: string;
-  visibility: 'private' | 'public';
+  /** private (moi seul), friends (amis choisis) ou public (tout le monde). */
+  visibility: PlaylistVisibility;
   trackCount: number;
+  /** Nombre d'amis avec qui la playlist est partagée. */
+  sharedCount?: number;
   createdAt: string;
   updatedAt: string;
 }
 
+export type PlaylistVisibility = 'private' | 'friends' | 'public';
+
 export interface PlaylistDetail extends Playlist {
   tracks: Track[];
   hiddenCount: number;
+  owner?: UserSummary;
+  /** Vrai si la playlist m'appartient. */
+  mine?: boolean;
+  /** Amis qui y ont accès (visible par le propriétaire uniquement). */
+  sharedWith?: UserSummary[];
 }
+
+/** Playlist partagée avec moi par un ami. */
+export type SharedPlaylist = Playlist & { owner: UserSummary };
 
 export type SharedTrack = Track & { sharedVia: 'share' | 'message'; sharedAt: string };
 
@@ -109,12 +122,25 @@ export class LibraryService {
     return this.http.get<PlaylistDetail>(`/api/playlists/${id}`);
   }
 
-  createPlaylist(body: { name: string; description?: string; visibility?: 'private' | 'public' }) {
+  createPlaylist(body: { name: string; description?: string; visibility?: PlaylistVisibility }) {
     return this.http.post<Playlist>('/api/playlists', body);
   }
 
   updatePlaylist(id: string, body: Partial<Pick<Playlist, 'name' | 'description' | 'visibility'>>) {
     return this.http.patch<Playlist>(`/api/playlists/${id}`, body);
+  }
+
+  /** Partage avec des amis choisis (une playlist privée passe en « Amis choisis »). */
+  sharePlaylist(id: string, userIds: string[]) {
+    return this.http.post<Playlist & { sharedWith: UserSummary[] }>(`/api/playlists/${id}/share`, { userIds });
+  }
+
+  unsharePlaylist(id: string, userId: string) {
+    return this.http.delete<Playlist & { sharedWith: UserSummary[] }>(`/api/playlists/${id}/share/${userId}`);
+  }
+
+  sharedPlaylists() {
+    return this.http.get<{ playlists: SharedPlaylist[] }>('/api/me/shared-playlists');
   }
 
   deletePlaylist(id: string) {

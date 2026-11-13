@@ -64,14 +64,14 @@ test.describe("MOST VIBE — bibliothèque, réactions et accès", { skip }, () 
     await mongoose.disconnect();
   });
 
-  test("migration 002 : up puis down sans perte puis up (avec la 003 et la 004 par-dessus)", async () => {
+  test("migration 002 : up puis down sans perte puis up (avec les migrations 003 à 005 par-dessus)", async () => {
     const db = mongoose.connection.db;
     const quiet = () => undefined;
     await migrateUp(db, quiet);
     const names = async () => (await db.listCollections({}, { nameOnly: true }).toArray()).map((item) => item.name);
     for (const name of ["reactions", "trackaccesses", "playlists", "externaltracks"]) assert.ok((await names()).includes(name), name);
     await db.collection("playlists").insertOne({ ownerId: A._id, name: "à garder", trackIds: [] });
-    await migrateDown(db, 3, quiet); // annule 004, 003 puis 002
+    await migrateDown(db, 4, quiet); // annule 005, 004, 003 puis 002
     const after = await names();
     assert.ok(!after.includes("reactions"), "collection vide supprimée");
     const renamed = after.find((name) => name.startsWith("rollback002_playlists_"));
@@ -80,8 +80,8 @@ test.describe("MOST VIBE — bibliothèque, réactions et accès", { skip }, () 
     await db.collection(renamed).drop();
     // Les migrations 003 et 004 ont renommé (sans les perdre) les collections non vides
     // créées pour ce test (amitiés…) : on les remet en place.
-    for (const name of after.filter((item) => /^rollback00[34]_.+_\d+$/.test(item))) {
-      await db.collection(name).rename(name.replace(/^rollback00[34]_/, "").replace(/_\d+$/, ""));
+    for (const name of after.filter((item) => /^rollback00[345]_.+_\d+$/.test(item))) {
+      await db.collection(name).rename(name.replace(/^rollback00[345]_/, "").replace(/_\d+$/, ""));
     }
     await migrateUp(db, quiet);
     assert.equal(await db.collection("friendships").countDocuments(), 2, "amitiés retrouvées après l'annulation");

@@ -10,9 +10,11 @@ import mongoose from "mongoose";
 import { literalRegex, readableMatch } from "../access.js";
 import { Block } from "../models/Block.js";
 import { Conversation } from "../models/Conversation.js";
+import { Follow } from "../models/Follow.js";
 import { Friendship, pairKey } from "../models/Friendship.js";
 import { Message } from "../models/Message.js";
 import { Notification } from "../models/Notification.js";
+import { Playlist } from "../models/Playlist.js";
 import { Track } from "../models/Track.js";
 import { TrackAccess } from "../models/TrackAccess.js";
 import { User } from "../models/User.js";
@@ -42,6 +44,12 @@ async function relations(me, userIds) {
 async function revokeShares(ownerId, userId, vias = ["share"]) {
   const result = await TrackAccess.updateMany({ ownerId, userId, via: { $in: vias }, revokedAt: null }, { $set: { revokedAt: new Date() } });
   return result.modifiedCount;
+}
+
+/** Retire a et b des playlists « Amis choisis » l'un de l'autre (amitié retirée ou blocage). */
+async function unsharePlaylists(a, b) {
+  await Playlist.updateMany({ ownerId: a, sharedWith: oid(b) }, { $pull: { sharedWith: oid(b) } });
+  await Playlist.updateMany({ ownerId: b, sharedWith: oid(a) }, { $pull: { sharedWith: oid(a) } });
 }
 
 export function registerSocialRoutes(app, { auth }) {
@@ -87,15 +95,33 @@ export function registerSocialRoutes(app, { auth }) {
       }
       const user = await User.findById(req.params.id).select("name createdAt").lean();
       if (!user) return res.status(404).json({ message: "Profil inconnu" });
-      const [rel, friendCount, readable] = await Promise.all([relations(me, [user._id]), Friendship.countDocuments({ status: "accepted", $or: [{ requesterId: user._id }, { recipientId: user._id }] }), readableMatch(me)]);
-      const tracks = await Track.aggregate([{ $match: { ownerId: user._id } }, { $match: readable }, { $sort: { createdAt: -1 } }, { $limit: 24 }, ...AUTHOR_LOOKUP, PUBLIC_FIELDS]);
+      const [rel, friendCount, readable, followers, following, isFollowing] = await Promise.all([
+        relations(me, [user._id]),
+        Friendship.countDocuments({ status: "accepted", $or: [{ requesterId: user._id }, { recipientId: user._id }] }),
+        readableMatch(me),
+        Follow.countDocuments({ followedId: user._id }),
+        Follow.countDocuments({ followerId: user._id }),
+        Follow.exists({ followerId: me, followedId: user._id }),
+      ]);
+      // Playlists de ce profil que le lecteur a le droit d'ouvrir (toutes si c'est le sien).
       const self = String(user._id) === String(me);
+      const playlists = await Playlist.find({
+        ownerId: user._id,
+        ...(self ? {} : { $or: [{ visibility: "public" }, { visibility: "friends", sharedWith: oid(me) }] }),
+      })
+        .sort({ updatedAt: -1 })
+        .limit(50);
+      const tracks = await Track.aggregate([{ $match: { ownerId: user._id } }, { $match: readable }, { $sort: { createdAt: -1 } }, { $limit: 24 }, ...AUTHOR_LOOKUP, PUBLIC_FIELDS]);
       res.json({
         ...summary(user),
         memberSince: user.createdAt,
         relation: self ? "self" : (rel.get(String(user._id))?.relation ?? "none"),
         requestId: rel.get(String(user._id))?.requestId ?? null,
         friendCount,
+        followers,
+        following,
+        isFollowing: Boolean(isFollowing),
+        playlists: playlists.map((playlist) => playlist.toPublic()),
         tracks,
       });
     } catch (error) {
@@ -224,6 +250,7 @@ export function registerSocialRoutes(app, { auth }) {
       const link = await Friendship.findOneAndDelete({ pairKey: pairKey(me, req.params.userId), status: "accepted" });
       if (!link) return res.status(404).json({ message: "Ami inconnu" });
       const revoked = (await revokeShares(me, req.params.userId)) + (await revokeShares(req.params.userId, me));
+      await unsharePlaylists(me, req.params.userId);
       console.log(`[friends] Amitié retirée : ${me} / ${req.params.userId}, accès retirés : ${revoked}`);
       res.json({ removed: true, revokedAccesses: revoked });
     } catch (error) {
@@ -262,6 +289,8 @@ export function registerSocialRoutes(app, { auth }) {
       if (!(await User.exists({ _id: target }))) return res.status(404).json({ message: "Profil inconnu" });
       await Block.updateOne({ blockerId: me, blockedId: target }, { $setOnInsert: { blockerId: me, blockedId: target } }, { upsert: true });
       await Friendship.deleteOne({ pairKey: pairKey(me, target) });
+      await Follow.deleteMany({ $or: [{ followerId: me, followedId: target }, { followerId: target, followedId: me }] });
+      await unsharePlaylists(me, target);
       const revoked = (await revokeShares(me, target, ["share", "message"])) + (await revokeShares(target, me));
       await Notification.deleteMany({ $or: [{ userId: me, actorId: target }, { userId: target, actorId: me, readAt: null }] });
       console.log(`[blocks] ${me} bloque ${target} (accès retirés : ${revoked})`);
@@ -296,11 +325,20 @@ export function registerSocialRoutes(app, { auth }) {
    */
   app.get("/api/feed", auth, async (req, res, next) => {
     try {
-      const friends = await friendIds(req.auth.sub);
-      if (!friends.length) return res.json({ items: [], friendCount: 0 });
+      const [friends, follows] = await Promise.all([friendIds(req.auth.sub), Follow.find({ followerId: req.auth.sub }).select("followedId").lean()]);
+      const followed = follows.map((follow) => String(follow.followedId));
+      if (!friends.length && !followed.length) return res.json({ items: [], friendCount: 0, followingCount: 0 });
       const readable = await readableMatch(req.auth.sub);
       const tracks = await Track.aggregate([
-        { $match: { ownerId: { $in: friends.map(oid) } } },
+        {
+          $match: {
+            $or: [
+              { ownerId: { $in: friends.map(oid) } },
+              // Artistes suivis (sans être amis) : seulement leurs créations publiques.
+              { ownerId: { $in: followed.map(oid) }, visibility: "public" },
+            ],
+          },
+        },
         { $match: readable },
         { $sort: { createdAt: -1 } },
         { $limit: 30 },
@@ -308,7 +346,7 @@ export function registerSocialRoutes(app, { auth }) {
         PUBLIC_FIELDS,
       ]);
       const items = tracks.map((track) => ({ type: track.kind === "mix" ? "mix_published" : "track_published", at: track.createdAt, actor: track.author, track }));
-      res.json({ items, friendCount: friends.length });
+      res.json({ items, friendCount: friends.length, followingCount: followed.length });
     } catch (error) {
       console.error("[feed] Erreur du fil d'activité", error);
       next(error);
@@ -327,6 +365,8 @@ export function registerSocialRoutes(app, { auth }) {
       const names = new Map(users.map((user) => [String(user._id), user.name]));
       const tracks = await Track.find({ _id: { $in: items.map((item) => item.trackId).filter(Boolean) } }).select("title").lean();
       const titles = new Map(tracks.map((track) => [String(track._id), track.title]));
+      const playlists = await Playlist.find({ _id: { $in: items.map((item) => item.playlistId).filter(Boolean) } }).select("name").lean();
+      const playlistNames = new Map(playlists.map((playlist) => [String(playlist._id), playlist.name]));
       res.json({
         unread: items.filter((item) => !item.readAt).length,
         items: items.map((item) => ({
@@ -336,6 +376,7 @@ export function registerSocialRoutes(app, { auth }) {
           count: item.count,
           conversationId: item.conversationId ? String(item.conversationId) : null,
           track: item.trackId || item.trackTitle ? { id: item.trackId ? String(item.trackId) : null, title: titles.get(String(item.trackId)) ?? item.trackTitle ?? null } : null,
+          playlist: item.playlistId ? { id: String(item.playlistId), name: playlistNames.get(String(item.playlistId)) ?? null } : null,
           read: Boolean(item.readAt),
           at: item.updatedAt,
         })),

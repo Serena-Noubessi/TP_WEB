@@ -59,6 +59,9 @@ export const routes: Routes = [
     canActivate: [authGuard],
     title: 'Messages — MOST VIBE',
   },
+  // Page d'une piste (commentaires) et d'une playlist : ouvertes aussi aux visiteurs, le serveur vérifie les droits.
+  { path: 't/:id', loadComponent: () => import('./components/track-page/track-page').then((m) => m.TrackPageComponent), title: 'Piste — MOST VIBE' },
+  { path: 'p/:id', loadComponent: () => import('./components/playlist-page/playlist-page').then((m) => m.PlaylistPageComponent), title: 'Playlist — MOST VIBE' },
   // MOST VIBE étape 4 : paramètres (section 9) et administration (section 10, rôle vérifié par le serveur).
   {
     path: 'settings',

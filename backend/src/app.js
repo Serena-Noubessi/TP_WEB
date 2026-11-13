@@ -11,6 +11,8 @@ import { User } from "./models/User.js";
 import { Track } from "./models/Track.js";
 import { canRead } from "./access.js";
 import { isRevoked } from "./sessions.js";
+import { parseWaveform } from "./waveform.js";
+import { notifyFollowers } from "./social.js";
 import { TrackAccess } from "./models/TrackAccess.js";
 import { purgeTrack, UPLOADS } from "./track-cleanup.js";
 import { STYLES, VISIBILITIES } from "./constants.js";
@@ -21,6 +23,8 @@ import { registerMessageRoutes } from "./routes/messages.js";
 import { registerMixRoutes } from "./routes/mixes.js";
 import { registerSettingsRoutes } from "./routes/settings.js";
 import { registerAdminRoutes } from "./routes/admin.js";
+import { registerCommentRoutes } from "./routes/comments.js";
+import { registerFollowRoutes } from "./routes/follows.js";
 
 // Les fichiers audio et les couvertures restent sur le disque du serveur.
 // MongoDB ne conserve que leurs métadonnées et noms de stockage internes.
@@ -156,6 +160,9 @@ function trackFields(body, { partial }) {
     if (!Number.isFinite(duration) || duration < 0 || duration > 86400) errors.push("Durée invalide (en secondes, 24 h au maximum)");
     else fields.durationSeconds = Math.round(duration * 10) / 10;
   }
+  const waveform = parseWaveform(body.waveform);
+  if (waveform.error) errors.push(waveform.error);
+  else if (waveform.value) fields.waveform = waveform.value;
   if (!partial && !fields.visibility) fields.visibility = "private";
   return { fields, errors };
 }
@@ -254,7 +261,9 @@ export function createApp() {
   // plusieurs adresses séparées par des virgules). Sans cette variable (développement),
   // toutes les origines sont acceptées.
   const allowedOrigins = (process.env.CORS_ORIGIN ?? "").split(",").map((origin) => origin.trim()).filter(Boolean);
-  app.use(allowedOrigins.length ? cors({ origin: allowedOrigins }) : cors());
+  // Content-Disposition exposé : le site lit le nom du fichier téléchargé (bouton « Télécharger »).
+  const corsOptions = { exposedHeaders: ["Content-Disposition"] };
+  app.use(cors(allowedOrigins.length ? { ...corsOptions, origin: allowedOrigins } : corsOptions));
 
   // Express ne gère pas nativement le JSON : ce middleware transforme le corps JSON en objet JavaScript 
   // accessible via req.body.
@@ -484,6 +493,7 @@ export function createApp() {
         });
 
         console.log(`[tracks] Upload enregistré : ${track.id}`);
+        await notifyFollowers(track.ownerId, track);
         res.status(201).json(track.toPublic());
       } catch (error) {
         console.error("[tracks] Erreur après l'enregistrement du fichier", error);
@@ -568,6 +578,35 @@ export function createApp() {
     }
   });
 
+  /**
+   * Téléchargement d'une piste (fichier audio d'origine) par quelqu'un qui a le
+   * droit de l'écouter. Mêmes droits que la lecture, vérifiés à chaque requête.
+   */
+  app.get("/api/tracks/:id/download", optionalAuth, async (req, res, next) => {
+    try {
+      if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: "Piste inconnue" });
+      const track = await Track.findById(req.params.id).select("+storedName");
+      if (!track) return res.status(404).json({ message: "Piste inconnue" });
+      const access = await canRead(track, req.auth?.sub);
+      if (access !== "ok") return denyFile(res, access, "Téléchargement", track.id);
+      const extension = path.extname(track.storedName) || path.extname(track.originalName) || "";
+      // Nom lisible pour la personne qui télécharge (caractères interdits dans un nom de fichier retirés).
+      const name = `${track.title.replace(/[\\/:*?"<>|]+/g, " ").trim() || "piste"}${extension}`;
+      res.type(track.mimeType);
+      res.download(path.join(UPLOADS, track.storedName), name, (error) => {
+        if (error) {
+          console.error(`[tracks] Erreur de téléchargement ${track.id}`, error);
+          if (!res.headersSent) next(error);
+          return;
+        }
+        console.log(`[tracks] Piste téléchargée : ${track.id} (${req.auth?.sub ?? "visiteur"})`);
+      });
+    } catch (error) {
+      console.error("[tracks] Erreur de préparation du téléchargement", error);
+      next(error);
+    }
+  });
+
   /** Modifie le titre, le style, la visibilité, les tags ou l'album d'une piste (propriétaire seulement). */
   app.patch("/api/tracks/:id", auth, async (req, res, next) => {
     try {
@@ -576,6 +615,7 @@ export function createApp() {
       if (errors.length) return res.status(400).json({ message: errors.join(". ") });
       if (!Object.keys(fields).length) return res.status(400).json({ message: "Aucun champ à modifier" });
 
+      const before = await Track.findOne({ _id: req.params.id, ownerId: req.auth.sub }).select("visibility").lean();
       const track = await Track.findOneAndUpdate({ _id: req.params.id, ownerId: req.auth.sub }, { $set: fields }, { new: true, runValidators: true });
       if (!track) {
         console.warn(`[tracks] Modification impossible (inconnue ou pas propriétaire) : ${req.params.id}`);
@@ -588,6 +628,8 @@ export function createApp() {
         const result = await TrackAccess.updateMany({ trackId: track._id, via: "share", revokedAt: null }, { $set: { revokedAt: new Date() } });
         revoked = result.modifiedCount;
       }
+      // Une piste qui devient publique est annoncée aux abonnés de son auteur.
+      if (before?.visibility !== "public" && track.visibility === "public") await notifyFollowers(track.ownerId, track);
       console.log(`[tracks] Piste modifiée : ${track.id} (${Object.keys(fields).join(", ")}), accès retirés : ${revoked}`);
       res.json({ ...track.toPublic(), revokedAccesses: revoked });
     } catch (error) {
@@ -603,6 +645,8 @@ export function createApp() {
   registerMixRoutes(app, { auth, upload, cleanupUploadedFiles, maxCoverSize: MAX_COVER_FILE_SIZE });
   registerSettingsRoutes(app, { auth });
   registerAdminRoutes(app, { auth });
+  registerCommentRoutes(app, { auth, optionalAuth });
+  registerFollowRoutes(app, { auth });
 
   /** Supprime la métadonnée et le fichier physique correspondant. */
   app.delete("/api/tracks/:id", auth, async (req, res, next) => {

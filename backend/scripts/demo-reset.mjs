@@ -2,7 +2,9 @@
  * Remet la base de DÉMONSTRATION « most-vibe-demo » dans son état de départ entre
  * deux séries de tests navigateur, sans recopier les fichiers audio :
  * - efface les données sociales et de création (amis, messages, réactions, accès,
- *   playlists, projets de mixage, demandes de remix, signalements, notifications…) ;
+ *   playlists, projets de mixage, demandes de remix, signalements, notifications,
+ *   commentaires, abonnements…) ;
+ * - efface les formes d'onde des pistes de départ (le site les recalcule) ;
  * - supprime les pistes ajoutées pendant les tests (tout ce qui n'est pas « demo- ») ;
  * - remet les 9 pistes de départ dans leur visibilité d'origine ;
  * - supprime les comptes temporaires (temp-…@mostvibe.test) et lève toute suspension.
@@ -22,7 +24,7 @@ await mongoose.connect(process.env.MONGODB_URI, { dbName: DEMO_DB });
 const db = mongoose.connection.db;
 if (db.databaseName !== DEMO_DB) throw new Error(`Sécurité : ce script ne touche que ${DEMO_DB}`);
 try {
-  for (const name of ["friendships", "blocks", "conversations", "messages", "notifications", "trackaccesses", "reactions", "playlists", "externaltracks", "mixprojects", "remixrequests", "reports"]) {
+  for (const name of ["friendships", "blocks", "conversations", "messages", "notifications", "trackaccesses", "reactions", "playlists", "externaltracks", "mixprojects", "remixrequests", "reports", "comments", "follows"]) {
     await db.collection(name).deleteMany({});
   }
   // Pistes créées pendant les tests (envois, mixages publiés) : métadonnées et fichiers.
@@ -37,7 +39,7 @@ try {
     }
   }
   await db.collection("tracks").deleteMany({ _id: { $in: extra.map((track) => track._id) } });
-  await db.collection("tracks").updateMany({ storedName: /^demo-/ }, { $set: { visibility: "public" } });
+  await db.collection("tracks").updateMany({ storedName: /^demo-/ }, { $set: { visibility: "public" }, $unset: { waveform: "" } });
   await db.collection("tracks").updateMany({ title: { $in: PRIVATE_TITLES } }, { $set: { visibility: "private" } });
   const temp = await db.collection("users").deleteMany({ email: /^temp-.*@mostvibe\.test$/ });
   await db.collection("users").updateMany(
